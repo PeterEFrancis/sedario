@@ -1,24 +1,34 @@
+
+"use strict";
+
+
 const SQUARE = 100;
 
 const EMPTY = 0;
 const FILLED = 1;
 const WHITE = 2;
 const BLACK = 3;
+const ARROW = 4;
 
 
 function clone(arr) {
   return JSON.parse(JSON.stringify(arr));
 }
 
-
-class BaseState {
-
-  constructor(n) {
-    this.n = n;
-    this.moves = []
-  }
-
+function py_slice(arr, a, b) {
+  // python-like slice method
+  return arr.slice((a + arr.length) % arr.length, b ? (b + arr.length) % arr.length : arr.length);
 }
+
+function get_last(arr) {
+  return arr[arr.length - 1];
+}
+
+function is_on_line(line, point) {
+  return (line[0].y - point.y) * (line[0].x - line[1].x) === (line[0].y - line[1].y) * (line[0].x - point.x);
+}
+
+
 
 
 
@@ -27,14 +37,30 @@ class State {
 
   constructor(n) {
     this.n = n;
-    this.white = [];
-    this.black = [];
-
-    this.arrow = [];
-
+    this.moves = {};
+    this.moves[WHITE] = [];
+    this.moves[BLACK] = [];
+    this.current_player = WHITE;
     this.board = new Array(this.n * this.n).fill(EMPTY);
   }
 
+  start(white, black) {
+    if (white == black) {
+      new Error("you can't place both pieces on the same square");
+    }
+    this.moves[WHITE].push(white);
+    this.moves[BLACK].push(black);
+    this.board[white] = WHITE;
+    this.board[black] = BLACK;
+  }
+
+  _opponent() {
+    return WHITE + BLACK - this.current_player;
+  }
+
+  switch_players() {
+    this.current_player = this._opponent();
+  }
 
   _mod(a) {
     return {
@@ -51,37 +77,65 @@ class State {
     let c = this._mod(_c);
 
     // if c is on the line, no arrow
-    if ((a.y - c.y) * (a.x - b.x) == (a.y - b.y) * (a.x - c.x)) {
-      this.arrow = [];
-    } else {
-      this.arrow = [a, b];
+    if (!is_on_line([a, b], c)) {
+
     }
+
+
+
+
+
   }
 
-  set_from_base_state(base_state) {
+  set_from_combo_moves(combo_moves) {
     this.n = base_state.n;
     this.board = new Array(this.n * this.n).fill(EMPTY);
 
-    for (let i = 0; i < base_state.moves.length - 2; i++) {
-      if (i % 2 == 0) {
-        this.white.push(base_state.moves[i]);
+    let j = 0;
+    for (let i = 0; i < combo_moves.length - 2; i++) {
+      if (i % 2 === 0) {
+        this.moves.white.push(combo_moves[i]);
       } else {
-        this.black.push(base_state.moves[i]);
+        this.moves.black.push(combo_moves[i]);
       }
       this.board[i] = FILLED;
     }
 
-    this.board[this.white[this.white.length - 1]] = WHITE;
-    this.board[this.black[this.black.length - 1]] = BLACK;
+    this.board[get_last(this.moves[WHITE])] = WHITE;
+    this.board[get_last(this.moves[BLACK])] = BLACK;
 
-    if (this.black.length > this.white.length) {
-      this._arrowize(...this.black.slice(this.black.length - 2), this.white[this.white.length - 1]);
-    } else {
-      this._arrowize(...this.white.slice(this.black.length - 2), this.black[this.black.length - 1]);
-    }
+    this.current_player = combo_moves.length % 2 == 0 ? WHITE : BLACK;
+
+    this._arrowize(
+      ...py_slice(this.moves[this._opponent()], -2),
+      get_last(this.moves[this.current_player])
+    );
+
   }
 
+  get_combo_moves() {
+    let combo_moves = [];
+    for (let i = 0; i < this.moves[WHITE].length + this.moves[BLACK].length; i++) {
+      combo_moves.push(this.moves[i % 2 == 0 ? WHITE : BLACK][i]);
+    }
+    return combo_moves;
+  }
 
+  can_move_to(sq) {
+
+  }
+
+  move_to(square) {
+    // assuming that this is an allowed move
+    this.board[get_last(this.moves[this.current_player])] = FILLED;
+    this.board[square] = this.current_player;
+    this.moves[this.current_player].push(square);
+    this._arrowize(
+      ...py_slice(this.moves[this.current_player], -2),
+      get_last(this.moves[this._opponent()])
+    );
+    this.switch_players();
+  }
 
 
 
@@ -93,14 +147,19 @@ class State {
 
 
 
+
+
+
+
+
+
 class ViewState {
 
   constructor(state, w, h) {
     this.n = state.n;
-    this.white = clone(state.white);
-    this.black = clone(state.black);
+    this.state = state;
 
-    this.hover_loc = [];
+    this.hover_loc = null;
 
     this.size = SQUARE * this.n + 2 * (this.n + 1);
 
@@ -113,17 +172,17 @@ class ViewState {
 
     this.ctx = this.canvas.getContext('2d');
 
+    this.click_handler = function(sq) {};
   }
 
-  _get_square(num) {
+  _get_loc(num) {
     let _x = num % this.n;
     let _y = Math.floor(num / this.n);
     return {
-      x: 2 + _x * (SQUARE + 2) + 50,
-      y: 2 + _y * (SQUARE + 2) + 50
+      x: 2 + _x * (SQUARE + 2) + (SQUARE / 2),
+      y: 2 + _y * (SQUARE + 2) + (SQUARE / 2)
     }
   }
-
 
 
   update_display() {
@@ -138,37 +197,39 @@ class ViewState {
 
     // greyed out squares
     this.ctx.fillStyle = "#547172";
-    let squares = clone(this.white);
-    squares.push(...this.black);
-    for (let i = 0; i < squares.length; i++) {
-      let sq = this._get_square(squares[i]);
+    let grey_squares = py_slice(this.state.moves[WHITE], 0, -1);
+    grey_squares.push(...py_slice(this.state.moves[BLACK], 0, -1));
+    for (let i = 0; i < grey_squares.length; i++) {
+      let sq = this._get_loc(grey_squares[i]);
       this.ctx.fillRect(sq.x - (SQUARE / 2), sq.y - (SQUARE / 2), SQUARE, SQUARE);
     }
 
     // add markers
+    this.ctx.shadowColor = "grey";
+    this.ctx.shadowBlur = 7;
+    this.ctx.shadowOffsetX = 4;
+    this.ctx.shadowOffsetY = 4;
+    for (let i = 0; i < 2; i++) {
+      this.ctx.fillStyle = ['white', 'black'][i];
+      let loc = this._get_loc(get_last(this.state.moves[[WHITE, BLACK][i]]));
+      this.ctx.beginPath();
+      this.ctx.arc(loc.x, loc.y, SQUARE / 3 , 0, 2 * Math.PI);
+      this.ctx.fill();
+    }
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
 
-
-
-
-
-
-
-    // for (p in board) {
-    //    var mark = board[p];
     //
-    //    ctx.fillStyle = "#547172";
-    //    var x = 100 * (p % 8);
-    //    var y = 100 * Math.floor(p / 8);
-    //
-    //    // block piece
-    //    if (mark == 1) {
-    //      ctx.fillRect(x + 2, y + 2, 98, 98);
-    //    }
-    //
+
+
+
+
+
     //    // suggestion squares
     //    if (document.getElementById('show_suggestions').checked) {
     //      // suggestions
-    //      if (player_pos.length == 2) {
+    //      if (player_pos.length === 2) {
     //        if (can_move_to(p)) {
     //          var x = 100 * (p % 8) + 40;
     //          var y = 100 * Math.floor(p / 8) + 40;
@@ -178,42 +239,6 @@ class ViewState {
     //      }
     //    }
     //  }
-    //
-    // // add hover confirmation
-    // if (document.getElementById('show_confirmation').checked && can_move_to(hover_loc) && player_pos.length == 2) {
-    //  var x = 100 * (hover_loc % 8) + 40;
-    //  var y = 100 * Math.floor(hover_loc / 8) + 40;
-    //  ctx.fillStyle = "lightgreen";
-    //  ctx.fillRect(x, y, 20, 20);
-    // }
-    //
-    // // add numbers
-    // if (document.getElementById('numbered').checked) {
-    //  ctx.font = "19px Arial";
-    //  ctx.fillStyle = "darkgrey";
-    //  for (p in board) {
-    //    var x = 100 * (p % 8) + 3;
-    //    var y = 100 * Math.floor(p / 8) + 97;
-    //    ctx.fillText(p, x, y);
-    //  }
-    // }
-    //
-    // // add labels
-    // if (document.getElementById('labeled').checked) {
-    //  ctx.font = "19px Arial";
-    //  ctx.fillStyle = "darkgrey";
-    //  for (p in board) {
-    //    var x = 100 * (p % 8) + 77;
-    //    var y = 100 * Math.floor(p / 8) + 18;
-    //    ctx.fillText(["a","b","c","d","e","f","g","h"][p % 8] + Math.floor(1 + p / 8), x, y);
-    //  }
-    // }
-    //
-    // // edge lines
-    // ctx.fillStyle = "lightgrey";
-    // ctx.fillRect(0, 798, 800, 2);
-    // ctx.fillRect(798, 0, 2, 800);
-
 
   }
 
@@ -225,7 +250,7 @@ class ViewState {
 
 
   get_base_state() {
-    return ;
+    return;
   }
 
 

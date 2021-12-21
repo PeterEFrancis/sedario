@@ -8,11 +8,12 @@
   <body>
   </body>
   <script>
-    let bs = new BaseState(8);
-    bs.white = [3];
-    bs.black = [60];
-    let s = new ViewState(bs);
-    document.body.appendChild(s.canvas);
-    s.update_display();
+    let n = 8;
+    let s = new State(n);
+    s.start(3, 60);
+    s.move_to(17);
+    let vs = new ViewState(s)
+    document.body.appendChild(vs.get_DOM());
+    vs.update_display();
   </script>
 </html>
