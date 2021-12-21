@@ -1,0 +1,95 @@
+
+:root {
+  --light: lightgrey;
+  --orange: #df893a; /*884d16;*/
+  --lightorange: #e6a465;
+  --green: #559068;
+  --lightgreen: #3fa660;
+  --blue: #67a19f;
+  --lightblue: #54b6b2;
+  --dark: #3F3F3F;
+}
+
+
+
+body {
+  background-color: #1a1a1a;
+  min-width: 300px;
+}
+
+* {
+  color: lightgrey;
+  font-family: verdana;
+}
+
+br {
+  user-select: none;
+}
+
+.dark, .modal-content, .input-group-addon {
+  background-color: var(--dark);
+  color: var(--light);
+}
+
+.close {
+  color: white !important;
+}
+
+.btn {
+  outline: 0px !important;
+  border: 0px;
+}
+
+.btn-link {
+  color: var(--light) !important;
+  /* text-decoration: underline; */
+}
+
+.btn-info {
+  background-color: var(--blue);
+}
+.btn-info:hover {
+  background-color: var(--lightblue);
+}
+
+.btn-success {
+  background-color: var(--green);
+}
+.btn-success:hover {
+  background-color: var(--lightgreen);
+}
+
+.btn-warning {
+  background-color: var(--orange);
+}
+.btn-warning:hover {
+  background-color: var(--lightorange);
+}
+
+
+
+.btn-dark {
+  background-color: var(--dark);
+  color: lightgrey;
+}
+.btn-dark:hover {
+  background-color: lightgrey;
+}
+.btn-dark:focus *, .btn-dark:hover *, .btn-dark:active * {
+  color: var(--dark);
+}
+
+
+a {
+  color: var(--light) !important;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.soft {
+  color: grey !important;
+}
+
+input {
+  outline: 0 !important;
+}

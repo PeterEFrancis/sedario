@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <script src="../static/js/sedario.js"></script>
+    <title></title>
+  </head>
+  <body>
+  </body>
+  <script>
+    let bs = new BaseState(8);
+    bs.white = [3];
+    bs.black = [60];
+    let s = new ViewState(bs);
+    document.body.appendChild(s.canvas);
+    s.update_display();
+  </script>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sedario | User {{username}}</title>
+    <link rel="shortcut icon" type="image/ico" href="/static/img/favicon.ico"/>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <style>
+
+      .prof-pic {
+        max-width: 100%;
+        background-color: white;
+        border-radius: 50%;
+      }
+
+    </style>
+
+  </head>
+  <body>
+
+    {{ account_bar|safe }}
+
+    <div class="container">
+      <div class="jumbotron dark" style="margin-top: 50px">
+        <div class="row">
+          <div class="col-xs-3">
+            <div class="prof-pic">
+              <img src="https://robohash.org/{{ user.username }}.png?size=200x200&set=set3" class="prof-pic">
+            </div>
+          </div>
+          <div class="col-xs-9">
+            <h1>{{ user.username }}</h1>
+            <p class="lead">
+              <span class="soft">ELO:</span> {{ user.elo }} | <span class="soft">Rank:</span> {{ user.rank or 'pending' }}
+            </p>
+            {% if logged_in %}
+            {% if s_user.has_friend(user.username) %}
+            <button>Challenge</button>
+            {% elif user.has_friend_request(s_user.username) %}
+            <button type="button" class="btn btn-info" onclick="friend_request()" disabled>Friend Request</button>
+            {% else %}
+            <button type="button" class="btn btn-info" onclick="friend_request()">Friend Request</button>
+            <script>
+              function friend_request() {
+                $.ajax({
+                  url: '/user_access',
+                  data: {
+                    'method': 'friend_request',
+                    'username': {{ s_user.username|tojson }},
+                    'requested_friend': {{ user.username|tojson }}
+                  },
+                  type: 'POST',
+                  cache: false,
+                  success: function(response) {
+                    location.reload(true);
+                  },
+                  error: function(error) {
+                    console.log(error.responseText);
+                  },
+                });
+              }
+            </script>
+            {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{ footer|safe }}
+
+  </body>
+
+
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- change password Modal -->
+<!-- <div id="change-password-modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Change Password</h4>
+      </div>
+      <div class="modal-body">
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-asterisk"></span>
+          </span>
+          <input id="current-password" type="password" class="form-control change-password" placeholder="current password"/>
+        </div>
+        <br>
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-asterisk"></span>
+          </span>
+          <input id="new-password" type="password" class="form-control change-password" placeholder="new password"/>
+        </div>
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-asterisk"></span>
+          </span>
+          <input id="confirm-new-password" type="password" class="form-control change-password" placeholder="confirm new password"/>
+        </div>
+        <br>
+        <p id="change-password-error" style="color:red;">&nbsp;</p>
+        <button class="btn btn-primary center-block" onclick="change_password()">Change Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+    function logout() {
+      $.ajax({
+        url: '/logout',
+        data: {},
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          if (response.success == 'true') {
+            window.location.href = '/';
+          } else {
+            console.log(response.error);
+          }
+        },
+        error: function(error) {
+          console.log(error.statusText);
+        },
+      });
+    }
+
+</script>
+
+
+    function change_password() {
+      const current_password = document.getElementById('current-password').value;
+      const new_password = document.getElementById('new-password').value;
+      const confirm_new_password = document.getElementById('confirm-new-password').value;
+      if (new_password != confirm_new_password) {
+        document.getElementById('change-password-error').innerHTML = 'passwords do not match';
+      } else {
+        document.getElementById('change-password-error').innerHTML = '&nbsp;';
+        $.ajax({
+          url: '/change_password',
+          data: {
+            'password':new_password
+          },
+          type: 'POST',
+          cache: false,
+          success: function(response) {
+            if (response.success == 'true') {
+              location.reload(true);
+            } else {
+              document.getElementById('change-password-error').innerHTML = response.error;
+            }
+          },
+          error: function(error) {
+            document.getElementById('change-password-error').innerHTML = error.statusText;
+            console.log(error.statusText);
+          },
+        });
+      }
+    }
+
+    $(".change-password").on('keyup', function (e) {
+      if (e.key === 'Enter' || e.keyCode === 13) {
+        change_password();
+      }
+    }); -->

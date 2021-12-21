@@ -1,0 +1,199 @@
+<div class ="container-fluid dark" style="margin-bottom: 20px;">
+  <div class="row" style="margin-top: 5px; margin-bottom: 5px;">
+    <div class="col-xs-2">
+      <button class="btn btn-link" onclick="window.location='/'">
+        <span class="glyphicon glyphicon-home"></span>
+      </button>
+    </div>
+    <div class="col-xs-10 text-right">
+      {% if logged_in %}
+        <button class="btn btn-link" onclick="location.href='/user/{{username}}'">
+          {{username}} <span class="glyphicon glyphicon-user"></span>
+          {% if num_alerts != 0 %}
+          <span class="badge" style="background-color: var(--orange)">{{ num_alerts }}</span>
+          {% endif %}
+        </button>
+      {% else %}
+        <button type="button" class="btn btn-success" data-toggle="modal" data-target="#login-modal">Log In</button>
+        <button type="button" class="btn btn-info" data-toggle="modal" data-target="#signup-modal">Sign Up</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+
+  function isAlphaNumeric(str) {
+    var code, i, len;
+
+    for (i = 0, len = str.length; i < len; i++) {
+      code = str.charCodeAt(i);
+      if (!(code > 47 && code < 58) && // numeric (0-9)
+          !(code > 64 && code < 91) && // upper alpha (A-Z)
+          !(code > 96 && code < 123)) { // lower alpha (a-z)
+        return false;
+      }
+    }
+    return true;
+  };
+
+</script>
+
+{% if not logged_in %}
+
+<!-- Login Modal -->
+<div id="login-modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Log In</h4>
+      </div>
+      <div class="modal-body">
+        <p>Enter your account login information.</p>
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-user"></span>
+          </span>
+          <input id="login-username" class="form-control login" placeholder="username"/>
+        </div>
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-asterisk"></span>
+          </span>
+          <input id="login-password" type="password" class="form-control login" placeholder="password"/>
+        </div>
+        <br>
+        <p id="login-error" style="color:red;">&nbsp;</p>
+        <button class="btn btn-success center-block" onclick="login()">Log In</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- signup Modal -->
+<div id="signup-modal" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Sign Up</h4>
+      </div>
+      <div class="modal-body">
+        <p>Create your account.</p>
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-user"></span>
+          </span>
+          <input id="signup-username" class="form-control signup" placeholder="username"/>
+        </div>
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-asterisk"></span>
+          </span>
+          <input id="signup-password" type="password" class="form-control signup" placeholder="password"/>
+        </div>
+        <div class="input-group" style="margin-top: 20px;">
+          <span class="input-group-addon">
+            <span class="glyphicon glyphicon-asterisk"></span>
+          </span>
+          <input id="signup-confirm-password" type="password" class="form-control signup" placeholder="confirm password"/>
+        </div>
+        <br>
+        <p id="signup-error" style="color:red;">&nbsp;</p>
+        <button class="btn btn-info center-block" onclick="signup()">Sign Up</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+  function isAlphaNumeric(str) {
+    var code, i, len;
+
+    for (i = 0, len = str.length; i < len; i++) {
+      code = str.charCodeAt(i);
+      if (!(code > 47 && code < 58) && // numeric (0-9)
+          !(code > 64 && code < 91) && // upper alpha (A-Z)
+          !(code > 96 && code < 123)) { // lower alpha (a-z)
+        return false;
+      }
+    }
+    return true;
+  };
+
+
+  function signup() {
+    const signup_error = document.getElementById('signup-error');
+    const username = document.getElementById('signup-username').value;
+    const password = document.getElementById('signup-password').value;
+    const confirm_password = document.getElementById('signup-confirm-password').value;
+    if (!isAlphaNumeric(username)) {
+      signup_error.innerHTML = 'username must contain only alphanumeric characters';
+    } else if (password != confirm_password) {
+      signup_error.innerHTML = 'passwords do not match';
+    } else {
+      signup_error.innerHTML = '&nbsp;';
+      $.ajax({
+        url: '/signup',
+        data: {
+          'username': username,
+          'password': password
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          login_helper(username, password);
+        },
+        error: function(error) {
+          signup_error.innerHTML = error.responseText;
+          console.log(error.responseText);
+        },
+      });
+    }
+  }
+
+  function login() {
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    login_helper(username, password);
+  }
+
+  function login_helper(username, password) {
+    $.ajax({
+      url: '/login',
+      data: {
+        'username':username,
+        'password':password
+      },
+      type: 'POST',
+      cache: false,
+      success: function(response) {
+        location.reload(true);
+        console.log(response);
+      },
+      error: function(error) {
+        document.getElementById('login-error').innerHTML = error.responseText;
+        console.log(error.responseText);
+      },
+    });
+  }
+
+  $(".signup").on('keyup', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+      signup();
+    }
+  });
+
+  $(".login").on('keyup', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+      login();
+    }
+  });
+
+
+</script>
+
+
+{% endif %}

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Sedario</title>
+    <link rel="shortcut icon" type="image/ico" href="/static/img/favicon.ico"/>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <style>
+      body {
+        background-image: url('/static/img/forest.jpg');
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        background-size: cover;
+        background-position: center;
+      }
+    </style>
+
+  </head>
+  <body>
+
+    {{ account_bar|safe }}
+
+    <div class="container">
+      <div class="row">
+        <div class="col-lg-12">
+          <img class="center-block" src="/static/img/logo.png" style="width:100%; margin-top:20px; max-width:calc(min(100%, 800px))"/>
+        </div>
+      </div>
+      <div class="row" style="margin-top: 50px; margin-bottom: 50px;">
+        <div class="col-md-4"></div>
+        <div class="col-md-4">
+          <button class="btn btn-success btn-lg btn-block center-block" {% if logged_in %} onclick="window.location.href='/play'" {% else %} data-toggle="modal" data-target="#signup-modal" {% endif %}>
+            Play!
+          </button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-md-6">
+          <div class="panel dark">
+            <div class="panel-heading">
+              <h3 class="text-center">Learn to Play</h3>
+            </div>
+            <div class="panel-body">
+              <h5>GAME PLAY</h5>
+              <p>Players take turns moving their respective pieces. During a player’s turn, she must
+                <ul>
+                  <li>place a token on her piece’s current square, AND</li>
+                  <li>make a queen’s move to any square on the board that is not blocked by a chip, the opponent’s piece, or the arrow, AND</li>
+                  <li>move the arrow to lie on the board, connecting the previous square with the current. If she moves her piece directly towards the opponent, she does not place the arrow, but instead, removes it from the board (this move is called an "open").</li>
+                </ul>
+              </p>
+              <h5>OBJECTIVE</h5>
+              <p>Trap the opponent: the first player unable to make a move, loses, and the opponent wins.</p>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="panel dark">
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top: 50px; margin-bottom: 50px;">
+        <div class="col-md-4"></div>
+        <div class="col-md-4">
+          <div class="panel dark">
+            <div class="panel-heading">
+              <h3 class="text-center">Top Players</h3>
+            </div>
+            <div class="panel-body">
+              <ul class="list-group dark">
+                {% for rank, username, elo in top_10 %}
+                <li class="list-group-item dark">
+                  {{ rank }}.&emsp; <a href="/user/{{username}}">{{ username }}</a> <span class="badge">ELO: {{ elo }}</span>
+                </li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {{ footer|safe }}
+
+  </body>
+</html>
