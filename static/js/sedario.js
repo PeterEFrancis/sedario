@@ -139,33 +139,33 @@ class State {
     this.possible_moves = [];
     let current_mod = this._mod(get_last(this.moves[this.current_player]));
     const dirs = [
-      [1, 0], // 0 
-      [1, 1], // 1
-      [0, 1], // 2
-      [-1, 1], // 3
-      [-1, 0], // 4
-      [-1, -1], // 5
-      [0, -1], // 6
-      [1, -1] // 7
+      [1, 0], // 0      right
+      [1, 1], // 1      right down
+      [0, 1], // 2      down
+      [-1, 1], // 3     left down
+      [-1, 0], // 4     left
+      [-1, -1], // 5    left up
+      [0, -1], // 6     up
+      [1, -1] // 7      right up
     ];
     for (let d = 0; d < dirs.length; d++) {
-      let r = current_mod.r + dirs[d][1];
-      let c = current_mod.c + dirs[d][0];
+      let r = current_mod.r + dirs[d][0];
+      let c = current_mod.c + dirs[d][1];
       while (c >= 0 && c < this.n && r >= 0 && r < this.n) {
         let sq = this._sq(r, c);
-        if (this.board[sq] == EMPTY) {
-          // moving up + right
-          if (d == ) {}
-          // moving down + right
-          // moving up + left
-          // moving down + left
-
-          this.possible_moves.push(sq);
-        } else {
+        if (
+          (this.board[sq] != EMPTY)
+          || ((d == 1) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq + 1)) // moving down + right
+          || ((d == 3) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq - 1)) // moving down + left
+          || ((d == 5) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq - 1)) // moving up + left
+          || ((d == 7) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq + 1)) // moving up + right
+        ) {
           break;
         }
-        r += dirs[d][1];
-        c += dirs[d][0];
+
+        this.possible_moves.push(sq);
+        r += dirs[d][0];
+        c += dirs[d][1];
       }
     }
   }
