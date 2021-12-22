@@ -25,7 +25,7 @@ function get_last(arr) {
 }
 
 function is_on_line(line, point) {
-  return (line[0].y - point.y) * (line[0].x - line[1].x) === (line[0].y - line[1].y) * (line[0].x - point.x);
+  return (line[0].r - point.r) * (line[0].c - line[1].c) === (line[0].r - line[1].r) * (line[0].c - point.c);
 }
 
 
@@ -42,6 +42,8 @@ class State {
     this.moves[BLACK] = [];
     this.current_player = WHITE;
     this.board = new Array(this.n * this.n).fill(EMPTY);
+    this.arrow = [];
+    this.possible_moves = [];
   }
 
   start(white, black) {
@@ -52,21 +54,26 @@ class State {
     this.moves[BLACK].push(black);
     this.board[white] = WHITE;
     this.board[black] = BLACK;
+    this._find_possible_moves();
   }
 
   _opponent() {
     return WHITE + BLACK - this.current_player;
   }
 
-  switch_players() {
+  _switch_players() {
     this.current_player = this._opponent();
   }
 
   _mod(a) {
     return {
-      x: a % this.n,
-      y: Math.floor(a / this.n)
+      c: a % this.n,
+      r: Math.floor(a / this.n)
     }
+  }
+
+  _sq(r, c) {
+    return c + this.n * r;
   }
 
   _arrowize(_a, _b, _c) {
@@ -76,15 +83,22 @@ class State {
     let b = this._mod(_b);
     let c = this._mod(_c);
 
-    // if c is on the line, no arrow
-    if (!is_on_line([a, b], c)) {
-
+    // remove arrow
+    for (let i = 0; i < this.arrow.length; i++) {
+      this.board[this.arrow[i]] -= ARROW;
     }
 
+    this.arrow = [];
 
-
-
-
+    // if c is on the line, no arrow. Otherwise, make a new arrow
+    if (!is_on_line([a, b], c)) {
+      for (let i = 0; i < this.n * this.n; i++) {
+        if (is_on_line([a, b], this._mod(i))) {
+          this.arrow.push(i);
+          this.board[i] += ARROW;
+        }
+      }
+    }
   }
 
   set_from_combo_moves(combo_moves) {
@@ -121,8 +135,43 @@ class State {
     return combo_moves;
   }
 
-  can_move_to(sq) {
+  _find_possible_moves() {
+    this.possible_moves = [];
+    let current_mod = this._mod(get_last(this.moves[this.current_player]));
+    const dirs = [
+      [1, 0], // 0 
+      [1, 1], // 1
+      [0, 1], // 2
+      [-1, 1], // 3
+      [-1, 0], // 4
+      [-1, -1], // 5
+      [0, -1], // 6
+      [1, -1] // 7
+    ];
+    for (let d = 0; d < dirs.length; d++) {
+      let r = current_mod.r + dirs[d][1];
+      let c = current_mod.c + dirs[d][0];
+      while (c >= 0 && c < this.n && r >= 0 && r < this.n) {
+        let sq = this._sq(r, c);
+        if (this.board[sq] == EMPTY) {
+          // moving up + right
+          if (d == ) {}
+          // moving down + right
+          // moving up + left
+          // moving down + left
 
+          this.possible_moves.push(sq);
+        } else {
+          break;
+        }
+        r += dirs[d][1];
+        c += dirs[d][0];
+      }
+    }
+  }
+
+  can_move_to(sq) {
+    return this.possible_moves.includes(sq);
   }
 
   move_to(square) {
@@ -134,18 +183,11 @@ class State {
       ...py_slice(this.moves[this.current_player], -2),
       get_last(this.moves[this._opponent()])
     );
-    this.switch_players();
+    this._switch_players();
+    this._find_possible_moves();
   }
 
-
-
 }
-
-
-
-
-
-
 
 
 
@@ -163,27 +205,39 @@ class ViewState {
 
     this.size = SQUARE * this.n + 2 * (this.n + 1);
 
+    this.click_handler = function() {};
+
     this.canvas = document.createElement('canvas');
     this.canvas.style.backgroundColor = "#c7f9fc";
     this.canvas.width = this.size;
     this.canvas.height = this.size;
     this.canvas.style.width = w;
     this.canvas.style.height = h;
+    const t = this;
+    this.canvas.addEventListener('click', function(evt) {
+      let rect = t.canvas.getBoundingClientRect();
+      let x = (evt.clientX - rect.left) * (t.canvas.width / t.canvas.clientWidth);
+      let y = (evt.clientY - rect.top) * (t.canvas.height / t.canvas.clientHeight);
+      let r = (y - (y % (SQUARE + 2))) / (SQUARE + 2);
+      let c = (x - (x % (SQUARE + 2))) / (SQUARE + 2);
+      let sq = t.state._sq(r, c);
+      if (t.state.can_move_to(sq)) {
+        t.state.move_to(sq);
+        t.update_display();
+        t.click_handler();
+      }
+    });
 
     this.ctx = this.canvas.getContext('2d');
-
-    this.click_handler = function(sq) {};
   }
 
-  _get_loc(num) {
-    let _x = num % this.n;
-    let _y = Math.floor(num / this.n);
+  _get_loc(sq) {
+    let mod = this.state._mod(sq);
     return {
-      x: 2 + _x * (SQUARE + 2) + (SQUARE / 2),
-      y: 2 + _y * (SQUARE + 2) + (SQUARE / 2)
+      x: 2 + mod.c * (SQUARE + 2) + (SQUARE / 2),
+      y: 2 + mod.r * (SQUARE + 2) + (SQUARE / 2)
     }
   }
-
 
   update_display() {
     this.ctx.clearRect(0, 0, this.size, this.size);
@@ -220,25 +274,12 @@ class ViewState {
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 0;
 
-    //
-
-
-
-
-
-    //    // suggestion squares
-    //    if (document.getElementById('show_suggestions').checked) {
-    //      // suggestions
-    //      if (player_pos.length === 2) {
-    //        if (can_move_to(p)) {
-    //          var x = 100 * (p % 8) + 40;
-    //          var y = 100 * Math.floor(p / 8) + 40;
-    //          ctx.fillStyle = "lightgreen";
-    //          ctx.fillRect(x, y, 20, 20);
-    //        }
-    //      }
-    //    }
-    //  }
+    // add suggestion squares
+    this.ctx.fillStyle = "lightgreen";
+    for (let i = 0; i < this.state.possible_moves.length; i++) {
+      let loc = this._get_loc(this.state.possible_moves[i]);
+      this.ctx.fillRect(loc.x - SQUARE / 8, loc.y - SQUARE / 8, SQUARE / 4, SQUARE / 4);
+    }
 
   }
 
