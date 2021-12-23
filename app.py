@@ -451,7 +451,7 @@ def user_access():
     if method == 'save_account_settings':
         user.set_public(request.form['public'] == 'true')
         return 'save_account_settings successful', 200
-    if method == 'friend_request':
+    if method == 'request_friend':
         r_username = request.form['r_username']
         r_is_user, r_user = get_user(r_username)
         if not r_is_user:
