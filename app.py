@@ -188,7 +188,6 @@ def get_users_from_list(u_list):
 
 
 def elo(ra, rb, sa, sb):
-    print('here')
     qa = 10 ** (ra / 400)
     qb = 10 ** (rb / 400)
     ea = qa / (qa + qb)
@@ -550,6 +549,7 @@ def game_access():
                 ws = len(eval(game.combo_moves)) % 2 == 1 # white's turn => black wins
                 bs = 1 - ws
                 white.elo, black.elo = elo(white.elo, black.elo, ws, bs)
+                set_user_ranks()
             db.session.commit()
         return 'move success', 200
 
