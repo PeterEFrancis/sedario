@@ -188,11 +188,11 @@ def get_users_from_list(u_list):
 
 
 def elo(ra, rb, sa, sb):
-    qa = 10 ** (ra / 400)
-    qb = 10 ** (rb / 400)
+    qa = 10 ** int(ra / 400)
+    qb = 10 ** int(rb / 400)
     ea = qa / (qa + qb)
     eb = qb / (qa + qb)
-    return (int(ra + 16 * (sa - ea)), int(rb + 16 * (sb - eb)))
+    return (int(ra + 100 * (sa - ea)), int(rb + 100 * (sb - eb)))
 
 
 
