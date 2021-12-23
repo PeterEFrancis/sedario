@@ -102,17 +102,15 @@ class State {
   }
 
   set_from_combo_moves(combo_moves) {
-    this.n = base_state.n;
     this.board = new Array(this.n * this.n).fill(EMPTY);
 
-    let j = 0;
-    for (let i = 0; i < combo_moves.length - 2; i++) {
+    for (let i = 0; i < combo_moves.length; i++) {
       if (i % 2 === 0) {
-        this.moves.white.push(combo_moves[i]);
+        this.moves[WHITE].push(combo_moves[i]);
       } else {
-        this.moves.black.push(combo_moves[i]);
+        this.moves[BLACK].push(combo_moves[i]);
       }
-      this.board[i] = FILLED;
+      this.board[combo_moves[i]] = FILLED;
     }
 
     this.board[get_last(this.moves[WHITE])] = WHITE;
@@ -120,11 +118,13 @@ class State {
 
     this.current_player = combo_moves.length % 2 == 0 ? WHITE : BLACK;
 
-    this._arrowize(
-      ...py_slice(this.moves[this._opponent()], -2),
-      get_last(this.moves[this.current_player])
-    );
-
+    if (this.moves[this._opponent()].length >= 2) {
+      this._arrowize(
+        ...py_slice(this.moves[this._opponent()], -2),
+        get_last(this.moves[this.current_player])
+      );
+    }
+    this._find_possible_moves();
   }
 
   get_combo_moves() {
@@ -139,14 +139,14 @@ class State {
     this.possible_moves = [];
     let current_mod = this._mod(get_last(this.moves[this.current_player]));
     const dirs = [
-      [1, 0], // 0      right
+      [1, 0], // 0      down
       [1, 1], // 1      right down
-      [0, 1], // 2      down
-      [-1, 1], // 3     left down
-      [-1, 0], // 4     left
+      [0, 1], // 2      right
+      [-1, 1], // 3     right up
+      [-1, 0], // 4     up
       [-1, -1], // 5    left up
-      [0, -1], // 6     up
-      [1, -1] // 7      right up
+      [0, -1], // 6     left
+      [1, -1] // 7      left down
     ];
     for (let d = 0; d < dirs.length; d++) {
       let r = current_mod.r + dirs[d][0];
@@ -155,10 +155,10 @@ class State {
         let sq = this._sq(r, c);
         if (
           (this.board[sq] != EMPTY)
-          || ((d == 1) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq + 1)) // moving down + right
-          || ((d == 3) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq - 1)) // moving down + left
-          || ((d == 5) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq - 1)) // moving up + left
-          || ((d == 7) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq + 1)) // moving up + right
+          || ((d == 1) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq - 1)) // moving down + right
+          || ((d == 3) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq - 1)) // moving up + right
+          || ((d == 5) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq + 1)) // moving up + left          
+          || ((d == 7) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq + 1)) // moving down + left
         ) {
           break;
         }
@@ -197,9 +197,11 @@ class State {
 
 class ViewState {
 
-  constructor(state, w, h) {
+  constructor(state, one_sided) {
     this.n = state.n;
     this.state = state;
+
+    this.one_sided = one_sided; // ommit for False
 
     this.hover_loc = null;
 
@@ -211,8 +213,7 @@ class ViewState {
     this.canvas.style.backgroundColor = "#c7f9fc";
     this.canvas.width = this.size;
     this.canvas.height = this.size;
-    this.canvas.style.width = w;
-    this.canvas.style.height = h;
+    this.canvas.style.maxWidth = "100%";
     const t = this;
     this.canvas.addEventListener('click', function(evt) {
       let rect = t.canvas.getBoundingClientRect();
@@ -221,22 +222,26 @@ class ViewState {
       let r = (y - (y % (SQUARE + 2))) / (SQUARE + 2);
       let c = (x - (x % (SQUARE + 2))) / (SQUARE + 2);
       let sq = t.state._sq(r, c);
-      if (t.state.can_move_to(sq)) {
+      if (t.state.can_move_to(sq) && (!t.one_sided || t.one_sided == t.state.current_player)) {
         t.state.move_to(sq);
         t.update_display();
-        t.click_handler();
+        t.click_handler(sq);
       }
     });
 
     this.ctx = this.canvas.getContext('2d');
   }
 
-  _get_loc(sq) {
-    let mod = this.state._mod(sq);
+  _get_loc_from_mod(mod) {
     return {
       x: 2 + mod.c * (SQUARE + 2) + (SQUARE / 2),
       y: 2 + mod.r * (SQUARE + 2) + (SQUARE / 2)
     }
+  }
+
+  _get_loc_from_sq(sq) {
+    let mod = this.state._mod(sq);
+    return this._get_loc_from_mod(mod);
   }
 
   update_display() {
@@ -254,7 +259,7 @@ class ViewState {
     let grey_squares = py_slice(this.state.moves[WHITE], 0, -1);
     grey_squares.push(...py_slice(this.state.moves[BLACK], 0, -1));
     for (let i = 0; i < grey_squares.length; i++) {
-      let sq = this._get_loc(grey_squares[i]);
+      let sq = this._get_loc_from_sq(grey_squares[i]);
       this.ctx.fillRect(sq.x - (SQUARE / 2), sq.y - (SQUARE / 2), SQUARE, SQUARE);
     }
 
@@ -265,34 +270,82 @@ class ViewState {
     this.ctx.shadowOffsetY = 4;
     for (let i = 0; i < 2; i++) {
       this.ctx.fillStyle = ['white', 'black'][i];
-      let loc = this._get_loc(get_last(this.state.moves[[WHITE, BLACK][i]]));
+      let loc = this._get_loc_from_sq(get_last(this.state.moves[[WHITE, BLACK][i]]));
       this.ctx.beginPath();
-      this.ctx.arc(loc.x, loc.y, SQUARE / 3 , 0, 2 * Math.PI);
+      this.ctx.arc(loc.x, loc.y, SQUARE / 2.5 , 0, 2 * Math.PI);
       this.ctx.fill();
     }
     this.ctx.shadowBlur = 0;
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 0;
 
-    // add suggestion squares
-    this.ctx.fillStyle = "lightgreen";
-    for (let i = 0; i < this.state.possible_moves.length; i++) {
-      let loc = this._get_loc(this.state.possible_moves[i]);
-      this.ctx.fillRect(loc.x - SQUARE / 8, loc.y - SQUARE / 8, SQUARE / 4, SQUARE / 4);
+    if (!this.one_sided || this.one_sided == this.state.current_player) {
+      // add suggestion squares
+      this.ctx.fillStyle = "lightgreen";
+      for (let i = 0; i < this.state.possible_moves.length; i++) {
+        let loc = this._get_loc_from_sq(this.state.possible_moves[i]);
+        this.ctx.fillRect(loc.x - SQUARE / 8, loc.y - SQUARE / 8, SQUARE / 4, SQUARE / 4);
+      }
     }
 
+    // draw arrow
+    this.ctx.strokeStyle = "black";
+    this.ctx.lineWidth = 4;
+    if (this.state.arrow != []) {
+      let mods = this.state.arrow.map(x => this.state._mod(x));
+      let mod_cs = mods.map(x => x.c);
+      let mod_rs = mods.map(x => x.r);
+      let a_c = Math.min(...mod_cs);
+      let a_r = Math.min(...mod_rs);
+      let b_c = Math.max(...mod_cs);
+      let b_r = Math.max(...mod_rs);
+      let a_loc = this._get_loc_from_mod({c:a_c, r:a_r});
+      let b_loc = this._get_loc_from_mod({c:b_c, r:b_r});
+      this.ctx.beginPath();
+      if (a_r == b_r) { // horizontal
+        this.ctx.moveTo(0, a_loc.y);
+        this.ctx.lineTo(this.size, a_loc.y);
+      } else if (a_c == b_c) { // vertical
+        this.ctx.moveTo(a_loc.x, 0);
+        this.ctx.lineTo(a_loc.x, this.size);
+      } else if (this.state.arrow.includes(a_c + this.n * a_r)) { // slanted down
+        this.ctx.moveTo(a_loc.x - SQUARE / 2, a_loc.y - SQUARE / 2);
+        this.ctx.lineTo(b_loc.x + SQUARE / 2, b_loc.y + SQUARE / 2);
+      } else { // slanted up
+        this.ctx.moveTo(a_loc.x - SQUARE / 2, b_loc.y + SQUARE / 2);
+        this.ctx.lineTo(b_loc.x + SQUARE / 2, a_loc.y - SQUARE / 2);
+      }
+      this.ctx.stroke();
+    }
+
+    // if won
+    if (this.state.possible_moves.length === 0) {
+      let crown = new Image();
+      const t = this;
+      crown.onload = function() {
+        let loc = t._get_loc_from_sq(get_last(t.state.moves[t.state._opponent()]));
+        t.ctx.drawImage(crown, loc.x - SQUARE / 3.3, loc.y - SQUARE / 3, 60, 60);
+      };
+      crown.src = "/static/img/crown.png";
+    } else if (!this.one_sided || this.one_sided == this.state.current_player) {
+      // red dot
+      this.ctx.fillStyle = 'red';
+      let loc = this._get_loc_from_sq(get_last(this.state.moves[this.state.current_player]));
+      this.ctx.beginPath();
+      this.ctx.arc(loc.x, loc.y, SQUARE / 10 , 0, 2 * Math.PI);
+      this.ctx.fill();
+    }
+
+
+
   }
-
-
 
   get_DOM() {
     return this.canvas;
   }
 
-
   get_base_state() {
     return;
   }
-
 
 }

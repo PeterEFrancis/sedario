@@ -42,12 +42,10 @@
               <span class="soft">ELO:</span> {{ user.elo }} | <span class="soft">Rank:</span> {{ user.rank or 'pending' }}
             </p>
             {% if logged_in %}
-            {% if s_user.has_friend(user.username) %}
-            <button>Challenge</button>
-            {% elif user.has_friend_request(s_user.username) %}
-            <button type="button" class="btn btn-info" onclick="friend_request()" disabled>Friend Request</button>
+            {% if user.has_friend %}
+            <button class="btn btn-success" onclick="alert('do this')">Challenge</button>
             {% else %}
-            <button type="button" class="btn btn-info" onclick="friend_request()">Friend Request</button>
+            <button type="button" class="btn btn-info" onclick="friend_request()" {% if not user.has_friend_request(s_user.username) %} disabled {% endif %}>Friend Request</button>
             <script>
               function friend_request() {
                 $.ajax({
@@ -55,7 +53,7 @@
                   data: {
                     'method': 'friend_request',
                     'username': {{ s_user.username|tojson }},
-                    'requested_friend': {{ user.username|tojson }}
+                    'r_username': {{ user.username|tojson }}
                   },
                   type: 'POST',
                   cache: false,

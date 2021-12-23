@@ -19,13 +19,12 @@ from os import urandom
 from flask_socketio import SocketIO, send, join_room, leave_room
 
 
-
 app = Flask(__name__)
 app.secret_key = "ZpWNmtZBqTeLrJu6SWx6BueHGKWYxfD4fLz7CKTfcerZj4ffVhEG"
 
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://localhost/sedario'
 # heroku = Heroku(app)
-
 app.config['SECRET_KEY'] = 'secret!'
 
 
@@ -103,11 +102,11 @@ class User(db.Model):
         self.set_password(password)
         self.public = False
         self.online = False
-        self.elo = 100
+        self.elo = 1000
         self.rank = 0
         self.past_games = '[]'
         self.current_games = '[]'
-        self.challenges = '[]'
+        self.challenges = '[]' # elements are (username, rated)
         self.friend_requests = '[]'
         self.friends = '[]'
 
@@ -116,19 +115,17 @@ class User(db.Model):
         self.hashed_password = SHA1(password + self.salt)
         db.session.commit()
 
-    def set_public(self, public):
-        self.public = public
-        db.session.commit()
+    # def set_public(self, public):
+    #     self.public = public
+    #     db.session.commit()
 
     def add_friend_request(self, username):
         friend_requests = eval(self.friend_requests)
         if not username in friend_requests:
             self.friend_requests = str(friend_requests + [username])
             db.session.commit()
-
     def has_friend_request(self, username):
         return username in eval(self.friend_requests)
-
     def remove_friend_request(self, username):
         friend_requests = eval(self.friend_requests)
         friend_requests.remove(username)
@@ -140,27 +137,43 @@ class User(db.Model):
         if not username in friends:
             self.friends = str(friends + [username])
             db.session.commit()
-
     def has_friend(self, username):
         return username in eval(self.friends)
-
     def remove_friend(self, username):
         friends = eval(self.friends)
         friends.remove(username)
         self.friends = str(friends)
         db.session.commit()
 
-    def add_challenge(self, username):
+    def add_challenge(self, username, rated):
         challenges = eval(self.challenges)
         if not username in challenges:
-            self.challenges = str(challenges + [username])
+            self.challenges = str(challenges + [(username, rated)])
             db.session.commit()
-
+    def get_challenge(self, username):
+        for el in eval(self.challenges):
+            if username == el[0]:
+                return True, el
+        return False, None
     def remove_challenge(self, username):
-        challenges = eval(self.challenges)
-        challenges.remove(username)
-        self.challenges = str(challenges)
+        old_challenges = eval(self.challenges)
+        new_challenges = [el for el in old_challenges if el[0] != username]
+        self.challenges = str(new_challenges)
         db.session.commit()
+
+    def add_game(self, gameid):
+        self.current_games = str(eval(self.current_games) + [gameid])
+        db.session.commit()
+    def has_game(self, gameid):
+        return gameid in eval(self.current_games) or gameid in eval(self.past_games)
+
+    def end_game(self, gameid):
+        games = eval(self.current_games)
+        games.remove(gameid)
+        self.current_games = str(games)
+        self.past_games = str(eval(self.past_games) + [gameid])
+        db.session.commit()
+
 
 
 
@@ -174,6 +187,75 @@ def get_online_and_public_users():
 
 def get_users_from_list(u_list):
     return [u[1] for u in [get_user(u) for u in u_list] if u[0]]
+
+
+
+
+def elo(ra, rb, sa, sb):
+    qa = 10 ** (ra / 400)
+    qb = 10 ** (rb / 400)
+    ea = qa / (qa + qb)
+    eb = qb / (qa + ab)
+    return (int(ra + 16 * (sa - ea)), int(rb + 16 * (sb - eb)))
+
+
+
+# game types
+#  - h (human v human)
+#  -
+
+# game states
+# - p (playing)
+# - f (finished)
+
+class Game(db.Model):
+    __tablename__ = "games"
+    id = db.Column(db.Integer, primary_key=True)
+    white = db.Column(db.Text)
+    black = db.Column(db.Text)
+    type = db.Column(db.Text)
+    state = db.Column(db.Text)
+    rated = db.Column(db.Boolean)
+    combo_moves = db.Column(db.Text)
+    redo_stack = db.Column(db.Text)
+
+
+    def __init__(self, white, black, type, rated):
+        self.white = white
+        self.black = black
+        self.state = 'p'
+        self.type = type
+        self.rated = rated
+        self.combo_moves = '[3, 60]'
+        self.redo_stack = '[]'
+
+    def make_move(self, move):
+        self.combo_moves = str(eval(self.combo_moves) + [move])
+        self.redo_stack = '[]'
+        db.session.commit()
+
+    def undo(self):
+        if self.combo_moves != '[]':
+            combo_moves = eval(self.combo_moves)
+            self.redo_stack = str(eval(self.redo_stack) + combo_moves[-1])
+            self.combo_moves = str(eval(self.combo_moves)[:-1])
+        db.session.commit()
+
+    def redo(self):
+        if self.redo_stack != '[]':
+            redo_stack = eval(self.redo_stack)
+            self.combo_moves = str(eval(self.combo_moves) + redo_stack[-1])
+            self.redo_stack = str(redo_stack[:-1])
+        db.session.commit()
+
+
+def get_game(gameid):
+    games = db.session.query(Game).filter(Game.id == gameid)
+    is_game = len(list(games)) != 0
+    return is_game, games[0] if is_game else None
+
+def get_games_from_list(g_list):
+    return [g[1] for g in [get_game(g) for g in g_list] if g[0]]
 
 
 
@@ -248,6 +330,7 @@ def index():
 def all():
     return render_template(
         'all.html',
+        games = db.session.query(Game),
         users = db.session.query(User),
         SysData = get_SysData()
     )
@@ -261,6 +344,7 @@ def user(username):
     logged_in, s_user = get_session_user()
     # owned account
     if logged_in and s_user.username == username:
+        print(get_games_from_list(eval(user.current_games)))
         return render_template(
             'self_user.html',
             account_bar = get_account_bar(),
@@ -268,7 +352,8 @@ def user(username):
             user = user,
             friends = get_users_from_list(eval(user.friends)),
             friend_requests = eval(user.friend_requests),
-            challenges = eval(user.challenges)
+            challenges = eval(user.challenges),
+            current_games = [(g.black if g.white == s_user.username else g.white, g.id) for g in get_games_from_list(eval(user.current_games))]
         )
     # other person's account
     return render_template(
@@ -281,6 +366,7 @@ def user(username):
     )
 
 
+@app.route('/game')
 @app.route('/play')
 def play():
     logged_in, s_user = get_session_user()
@@ -288,71 +374,29 @@ def play():
         return redirect('/')
     return render_template(
         'play.html',
-        account_bar=get_account_bar(),
-        footer=get_footer(),
-        online_plays=get_online_and_public_users(),
-        friends=get_users_from_list(eval(s_user.friends))
+        account_bar = get_account_bar(),
+        footer = get_footer(),
+        s_user = s_user,
+        online_plays = get_online_and_public_users(),
+        friends = get_users_from_list(eval(s_user.friends))
     )
 
 
-
-
-
-
-#                   _
-#  ___  ___ ___ ___(_) ___  _ __
-# / __|/ _ / __/ __| |/ _ \| '_ \
-# \__ |  __\__ \__ | | (_) | | | |
-# |___/\___|___|___|_|\___/|_| |_|
-
-
-@app.route('/session')
-def sess():
-    return "<style>table,th,tr,td{border: 1px solid black;}</style><table><tr><th colspan='2'>Session</th><tr>" + "</tr><tr>".join(f"<td>{el}</td><td>{session[el]}</td>" for el in session) + "</tr></table>"
-
-
-def get_session_user():
-    if 'username' in session:
-        is_user, user = get_user(session['username'])
-        if not is_user:
-            session.pop('username', None)
-        else:
-            return is_user, user
-    return False, None
-
-
-
-
-
-
-
-#            _           _
-#   __ _  __| |_ __ ___ (_)_ __
-#  / _` |/ _` | '_ ` _ \| | '_ \
-# | (_| | (_| | | | | | | | | | |
-#  \__,_|\__,_|_| |_| |_|_|_| |_|
-
-
-@app.route('/initialize')
-def initialize():
-    db.drop_all()
-    db.create_all()
-    users = [[i, f'aaa{i}','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'] for i in range(1, 11)] + [[0, 'admin','Kg63KSRjsr5js','ff92bed28c618a2b17303ffefa5e40fd2e3c286e']]
-    for i, username, salt, hash in users:
-        u = User(username,'pass')
-        u.salt = salt
-        u.hashed_password = hash
-        u.elo = 0 if username == 'admin' else i * 10 + 100
-        db.session.add(u)
-        db.session.commit()
-
-    db.session.add(SysData())
-    db.session.commit()
-
-    set_user_ranks()
-
-    return 'Initialization is done.'
-
+@app.route('/game/<string:gameid>')
+def game(gameid):
+    logged_in, s_user = get_session_user()
+    if not logged_in:
+        return redirect('/')
+    is_game, game = get_game(gameid)
+    if not is_game:
+        return _404()
+    return render_template(
+        'game.html',
+        user = s_user,
+        account_bar = get_account_bar(),
+        footer = get_footer(),
+        game = game
+    )
 
 
 
@@ -412,12 +456,16 @@ def user_access():
         user.set_public(request.form['public'] == 'true')
         return 'save_account_settings successful', 200
     if method == 'friend_request':
-        requested_friend = request.form['requested_friend']
-        r_is_user, r_user = get_user(requested_friend)
+        r_username = request.form['r_username']
+        r_is_user, r_user = get_user(r_username)
         if not r_is_user:
-            return 'no such user exists', 403
-        r_user.add_friend_request(user.username)
-        return 'friend_request successful', 200
+            return 'No such user exists', 403
+        if r_user.username == user.username:
+            return "You can't friend request yourself!", 403
+        if r_user.has_friend_request(user.username):
+            return "You already requested to be their friend", 403
+        r_user.add_friend_request(username)
+        return 'request_friend successful', 200
     if method == 'accept_friend_request':
         a_username = request.form['a_username']
         a_is_user, a_user = get_user(a_username)
@@ -431,26 +479,38 @@ def user_access():
         d_username = request.form['d_username']
         user.remove_friend_request(d_username)
         return 'deny_friend_request successful', 200
-    if method == 'remove_friend':
-        f_username = request.form['f_username']
-        user.remove_friend(f_username)
-        return 'remove_friend successful', 200
-    if method == 'request_friend':
-        r_username = request.form['r_username']
-        r_is_user, r_user = get_user(r_username)
-        if not r_is_user:
+    # if method == 'remove_friend':
+    #     f_username = request.form['f_username']
+    #     user.remove_friend(f_username)
+    #     return 'remove_friend successful', 200
+    if method == 'challenge':
+        c_username = request.form['c_username']
+        rated = request.form['rated']
+        c_is_user, c_user = get_user(c_username)
+        if not c_is_user:
             return 'No such user exists', 403
-        if r_user.username == user.username:
-            return "You can't friend request yourself!", 403
-        if r_user.has_friend_request(user.username):
-            return "You already requested to be their friend", 403
-        r_user.add_friend_request(username)
+        if c_user.username == user.username:
+            return "You can't challenge yourself!", 403
+        if c_user.get_challenge(user.username)[0]:
+            return "You already challenged them", 403
+        c_user.add_challenge(username, rated == 'true')
         return 'request_friend successful', 200
     if method == 'accept_challenge':
         c_username = request.form['c_username']
+        c_is_user, c_user = get_user(c_username)
+        if not c_is_user:
+            return 'no such user exists', 403
+        has_challenge, challenge = user.get_challenge(c_username)
+        if not has_challenge:
+            return 'no such challenge to accept', 403
         user.remove_challenge(c_username)
-
-        return 'accept_challenge successful', 200
+        game = Game(user.username, challenge[0], 'h', challenge[1])
+        db.session.add(game)
+        db.session.commit()
+        user.add_game(game.id)
+        c_user.add_game(game.id)
+        db.session.commit()
+        return f'/game/{game.id}', 200
     if method == 'deny_challenge':
         c_username = request.form['c_username']
         user.remove_challenge(c_username)
@@ -461,6 +521,111 @@ def user_access():
 
 
 
+@app.route('/game_access', methods=['POST'])
+def game_access():
+    logged_in, s_user = get_session_user()
+    if not logged_in:
+        return 'Access Denied: You are not logged in', 401
+
+    game_id = int(request.form['id'])
+
+    is_game, game = get_game(game_id)
+    if not is_game:
+        return "no such game", 403
+
+    if not s_user.has_game(game_id):
+        return "you don't have access to this game", 403
+
+    method = request.form['method']
+    if method == 'get':
+        return game.combo_moves, 200
+    if method == 'move':
+        game.make_move(int(request.form['square']))
+        socketio.emit('update game', room=f'game-{game_id}')
+        if request.form['game_over'] == "true":
+            # game over
+            game.state = 'f'
+            white = get_user(game.white)[1]
+            black = get_user(game.black)[1]
+            white.end_game(game.id)
+            black.end_game(game.id)
+            if game.rated:
+                ws = len(eval(self.combo_moves)) % 2 == 1 # white's turn => black wins
+                bs = 1 - ws
+                white.elo, black.elo = elo(white.elo, black.elo, ws, bs)
+            db.session.commit()
+        return 'move success', 200
+
+
+    return "The method you are trying to access doesn't exist", 403
+
+
+@socketio.on('join game')
+def join_game(data):
+    join_room('game-' + data['id'])
+
+
+
+
+
+
+#                   _
+#  ___  ___ ___ ___(_) ___  _ __
+# / __|/ _ / __/ __| |/ _ \| '_ \
+# \__ |  __\__ \__ | | (_) | | | |
+# |___/\___|___|___|_|\___/|_| |_|
+
+
+@app.route('/session')
+def sess():
+    return "<style>table,th,tr,td{border: 1px solid black;}</style><table><tr><th colspan='2'>Session</th><tr>" + "</tr><tr>".join(f"<td>{el}</td><td>{session[el]}</td>" for el in session) + "</tr></table>"
+
+
+def get_session_user():
+    if 'username' in session:
+        is_user, user = get_user(session['username'])
+        if not is_user:
+            session.pop('username', None)
+        else:
+            return is_user, user
+    return False, None
+
+
+
+
+
+#            _           _
+#   __ _  __| |_ __ ___ (_)_ __
+#  / _` |/ _` | '_ ` _ \| | '_ \
+# | (_| | (_| | | | | | | | | | |
+#  \__,_|\__,_|_| |_| |_|_|_| |_|
+
+
+@app.route('/initialize')
+def initialize():
+    db.drop_all()
+    db.create_all()
+    users = [
+        ['aaa1','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
+        ['aaa2','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
+        ['admin','Kg63KSRjsr5js','ff92bed28c618a2b17303ffefa5e40fd2e3c286e']
+    ]
+    for username, salt, hash in users:
+        u = User(username,'pass')
+        u.salt = salt
+        u.hashed_password = hash
+        db.session.add(u)
+        db.session.commit()
+
+    get_user('aaa1')[1].add_friend('aaa2')
+    get_user('aaa2')[1].add_friend('aaa1')
+
+    db.session.add(SysData())
+    db.session.commit()
+
+    set_user_ranks()
+
+    return 'Initialization is done.'
 
 
 

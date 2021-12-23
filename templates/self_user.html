@@ -134,11 +134,11 @@
               <p>You have no challenges</p>
               {% else %}
               <ul class="list-group dark">
-                {% for c_user in challenges %}
+                {% for c in challenges %}
                 <li class="list-group-item dark">
-                  <a href="/user/{{ c_user }}">{{ c_user }}</a> <span class="badge">{{ c_user.elo }}</span>
-                  <button style="float:right; margin-top: -0.33em;" class="btn btn-sm btn-danger" onclick='deny_challenge({{ c_user|tojson }})'>Deny</button>
-                  <button style="float:right; margin-top: -0.33em; margin-right: 10px;" class="btn btn-sm btn-success" onclick='accept_challenge({{ c_user|tojson }})'>Accept</button>
+                  <a href="/user/{{ c[0] }}">{{ c[0] }}</a> ({% if not c[1] %}un{% endif %}rated)
+                  <button style="float:right; margin-top: -0.33em;" class="btn btn-sm btn-danger" onclick='deny_challenge("{{ c[0] }}")'>Deny</button>
+                  <button style="float:right; margin-top: -0.33em; margin-right: 10px;" class="btn btn-sm btn-success" onclick='accept_challenge("{{ c[0] }}");'>Accept</button>
                 </li>
                 {% endfor %}
               </ul>
@@ -155,7 +155,7 @@
                     type: 'POST',
                     cache: false,
                     success: function(response) {
-                      location.reload(true)
+                      location.href = response;
                     },
                     error: function(error) {
                       console.log(error.responseText);
@@ -186,6 +186,20 @@
           <div class="panel dark">
             <div class="panel-heading">
               <h3 class="text-center">Current Games</h3>
+              <div class="panel-body">
+                {% if current_games == [] %}
+                <p>You have no current games</p>
+                {% else %}
+                <ul class="list-group dark">
+                  {% for g in current_games %}
+                  <li class="list-group-item dark">
+                    {{ g[0] }}</a> (#{{ g[1] }})
+                    <button style="float:right; margin-top: -0.33em; margin-right: 10px;" class="btn btn-sm btn-success" onclick='location.href="/game/{{ g[1] }}"'>Open</button>
+                  </li>
+                  {% endfor %}
+                </ul>
+                {% endif %}
+              </div>
             </div>
           </div>
           <div class="panel dark">
@@ -264,13 +278,13 @@
               <ul class="list-group dark">
                 {% for f_user in friends %}
                 <li class="list-group-item dark">
-                  <a href="/user/{{ f_user }}">{{ f_user }}</a> <span class="badge">{{ f_user.elo }}</span>
-                  <button style="float:right; margin-top: -0.33em;" class="btn btn-sm btn-danger" onclick='remove_friend({{ f_user|tojson }})'>Remove</button>
+                  <a href="/user/{{ f_user.username }}">{{ f_user.username }}</a> <span class="badge">{{ f_user.elo }}</span>
+                  <!-- <button style="float:right; margin-top: -0.33em;" class="btn btn-sm btn-danger" onclick='remove_friend({{ f_user.username|tojson }})'>Remove</button> -->
                 </li>
                 {% endfor %}
               </ul>
               {% endif %}
-              <script>
+              <!-- <script>
                 function remove_friend(f_username) {
                   $.ajax({
                     url: '/user_access',
@@ -289,7 +303,7 @@
                     },
                   });
                 }
-              </script>
+              </script> -->
             </div>
           </div>
           <div class="panel dark">
@@ -339,120 +353,3 @@
 
 
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- change password Modal -->
-<!-- <div id="change-password-modal" class="modal fade" role="dialog">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-        <h4 class="modal-title">Change Password</h4>
-      </div>
-      <div class="modal-body">
-        <div class="input-group" style="margin-top: 20px;">
-          <span class="input-group-addon">
-            <span class="glyphicon glyphicon-asterisk"></span>
-          </span>
-          <input id="current-password" type="password" class="form-control change-password" placeholder="current password"/>
-        </div>
-        <br>
-        <div class="input-group" style="margin-top: 20px;">
-          <span class="input-group-addon">
-            <span class="glyphicon glyphicon-asterisk"></span>
-          </span>
-          <input id="new-password" type="password" class="form-control change-password" placeholder="new password"/>
-        </div>
-        <div class="input-group" style="margin-top: 20px;">
-          <span class="input-group-addon">
-            <span class="glyphicon glyphicon-asterisk"></span>
-          </span>
-          <input id="confirm-new-password" type="password" class="form-control change-password" placeholder="confirm new password"/>
-        </div>
-        <br>
-        <p id="change-password-error" style="color:red;">&nbsp;</p>
-        <button class="btn btn-primary center-block" onclick="change_password()">Change Password</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-
-    function logout() {
-      $.ajax({
-        url: '/logout',
-        data: {},
-        type: 'POST',
-        cache: false,
-        success: function(response) {
-          if (response.success == 'true') {
-            window.location.href = '/';
-          } else {
-            console.log(response.error);
-          }
-        },
-        error: function(error) {
-          console.log(error.statusText);
-        },
-      });
-    }
-
-</script>
-
-
-    function change_password() {
-      const current_password = document.getElementById('current-password').value;
-      const new_password = document.getElementById('new-password').value;
-      const confirm_new_password = document.getElementById('confirm-new-password').value;
-      if (new_password != confirm_new_password) {
-        document.getElementById('change-password-error').innerHTML = 'passwords do not match';
-      } else {
-        document.getElementById('change-password-error').innerHTML = '&nbsp;';
-        $.ajax({
-          url: '/change_password',
-          data: {
-            'password':new_password
-          },
-          type: 'POST',
-          cache: false,
-          success: function(response) {
-            if (response.success == 'true') {
-              location.reload(true);
-            } else {
-              document.getElementById('change-password-error').innerHTML = response.error;
-            }
-          },
-          error: function(error) {
-            document.getElementById('change-password-error').innerHTML = error.statusText;
-            console.log(error.statusText);
-          },
-        });
-      }
-    }
-
-    $(".change-password").on('keyup', function (e) {
-      if (e.key === 'Enter' || e.keyCode === 13) {
-        change_password();
-      }
-    }); -->
