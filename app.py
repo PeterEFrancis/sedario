@@ -1,16 +1,12 @@
 from flask import Flask, render_template, url_for, redirect, request, send_from_directory, jsonify, session, Response
 from flask_sqlalchemy import SQLAlchemy
 from flask_heroku import Heroku
-import re
 import random
 import html
 import os
 import sys
-import numpy as np
 import random as r
-from numba import njit
 import json
-import random
 import time
 import hashlib
 from base64 import b64encode
