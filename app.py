@@ -187,12 +187,14 @@ def get_users_from_list(u_list):
 
 
 
-def elo(ra, rb, sa, sb):
+def elo(ra, rb, sa, sb, na, nb):
+    ka = na
+    kb = nb
     qa = 10 ** int(ra / 400)
     qb = 10 ** int(rb / 400)
     ea = qa / (qa + qb)
     eb = qb / (qa + qb)
-    return (int(ra + 100 * (sa - ea)), int(rb + 100 * (sb - eb)))
+    return (int(ra + ka * (sa - ea)), int(rb + kb * (sb - eb)))
 
 
 
@@ -222,7 +224,7 @@ class Game(db.Model):
         self.state = 'p'
         self.type = type
         self.rated = rated
-        self.combo_moves = '[3, 60]'
+        self.combo_moves = str([2, 22]) # 3, 60
         self.redo_stack = '[]'
 
     def make_move(self, move):
@@ -548,7 +550,7 @@ def game_access():
             if game.rated:
                 ws = len(eval(game.combo_moves)) % 2 == 1 # white's turn => black wins
                 bs = 1 - ws
-                white.elo, black.elo = elo(white.elo, black.elo, ws, bs)
+                white.elo, black.elo = elo(white.elo, black.elo, ws, bs, len(eval(white.past_games)), len(eval(white.past_games)))
                 set_user_ranks()
             db.session.commit()
         return 'move success', 200
