@@ -31,7 +31,7 @@
         </div>
       </div>
       <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="panel dark">
             <div class="panel-heading">
               <h3 class="text-center">Play a Friend</h3>
@@ -51,10 +51,10 @@
                   <label><input id="rated" type="checkbox" value="rated">Rated</label>
                 </div>
               </div>
-              <button class="btn btn-success btn-block"onclick="challenge()">Challenge!</button>
+              <button class="btn btn-success btn-block" onclick="challenge_friend()">Challenge!</button>
               <p id="challenge-feedback" style="margin-top: 1em;"></p>
               <script>
-              function challenge() {
+              function challenge_friend() {
                 let sel = document.getElementById('choosen-friend');
                 let c_username = sel.options[sel.selectedIndex].text;
                 let rated = document.getElementById('rated').checked;
@@ -79,21 +79,68 @@
               }
               </script>
               {% endif %}
-              <!-- <br>
-              <button class="btn btn-default center-block">
-                Challenge Recent Players
-              </button> -->
+            </div>
+          </div>
+          <div class="panel dark">
+            <div class="panel-heading">
+              <h3 class="text-center">Play Online Players</h3>
+            </div>
+            <div class="panel-body">
+              {% if recent_players == [] %}
+              <p>There are no players online</p>
+              {% else %}
+              <div class="form-group">
+                <label for="choosen-recent">Choose a Recent Player:</label>
+                <select class="form-control" id="choosen-recent">
+                  {% for u in recent_players %}
+                  <option value="{{ u[0] }}">{{ u[0] }} (last seen: {{ u[1] }} min ago)</option>
+                  {% endfor %}
+                </select>
+                <div class="checkbox">
+                  <label><input id="rated-2" type="checkbox" value="rated">Rated</label>
+                </div>
+              </div>
+              <button class="btn btn-success btn-block" onclick="challenge_recent()">Challenge!</button>
+              <p id="challenge-feedback-2" style="margin-top: 1em;"></p>
+              <script>
+              function load_recents() {
+                // DO THIS
+              }
+
+              function challenge_recent() {
+                let sel = document.getElementById('choosen-recent');
+                let c_username = sel.options[sel.selectedIndex].text;
+                let rated = document.getElementById('rated-2').checked;
+                $.ajax({
+                  url: '/user_access',
+                  data: {
+                    'method': 'challenge',
+                    'username': {{ s_user.username|tojson }},
+                    'c_username': c_username,
+                    'rated': rated
+                  },
+                  type: 'POST',
+                  cache: false,
+                  success: function(response) {
+                    document.getElementById('challenge-feedback-2').innerHTML = 'Challenge successful!';
+                  },
+                  error: function(error) {
+                    document.getElementById('challenge-feedback-2').innerHTML = error.responseText;
+                    console.log(error.responseText);
+                  },
+                });
+              }
+              </script>
+              {% endif %}
             </div>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
           <div class="panel dark">
             <div class="panel-heading">
               <h3 class="text-center">Play a Computer</h3>
             </div>
           </div>
-        </div>
-        <div class="col-md-4">
           <div class="panel dark">
             <div class="panel-heading">
               <h3 class="text-center">Pass and Play</h3>

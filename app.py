@@ -84,7 +84,7 @@ class User(db.Model):
     salt = db.Column(db.Text)
     hashed_password = db.Column(db.Text)
     public = db.Column(db.Boolean)
-    online = db.Column(db.Boolean)
+    last_seen = db.Column(db.Text)
     elo = db.Column(db.Integer)
     rank = db.Column(db.Integer)
     past_games = db.Column(db.Text)
@@ -97,7 +97,7 @@ class User(db.Model):
         self.username = username
         self.set_password(password)
         self.public = False
-        self.online = False
+        self.last_seen =str(time.time())
         self.elo = 1000
         self.rank = 0
         self.past_games = '[]'
@@ -106,14 +106,18 @@ class User(db.Model):
         self.friend_requests = '[]'
         self.friends = '[]'
 
+    def check_in(self):
+        self.last_seen = str(time.time())
+        db.session.commit()
+
     def set_password(self, password):
         self.salt = get_salt(12)
         self.hashed_password = SHA1(password + self.salt)
         db.session.commit()
 
-    # def set_public(self, public):
-    #     self.public = public
-    #     db.session.commit()
+    def set_public(self, public):
+        self.public = public
+        db.session.commit()
 
     def add_friend_request(self, username):
         friend_requests = eval(self.friend_requests)
@@ -178,8 +182,14 @@ def get_user(username):
     is_user = len(list(users)) != 0
     return is_user, users[0] if is_user else None
 
-def get_online_and_public_users():
-    return db.session.query(User).filter(User.public == True and User.online == True)
+def get_recent_and_public_users():
+    public = db.session.query(User).filter(User.public == True)
+    recents = []
+    for u in public:
+        t = int((time.time() - eval(u.last_seen)) / 60)
+        if t < 30:
+            recents.append((u.username, t))
+    return recents
 
 def get_users_from_list(u_list):
     return [u[1] for u in [get_user(u) for u in u_list] if u[0]]
@@ -187,14 +197,23 @@ def get_users_from_list(u_list):
 
 
 
+def get_k(n):
+    if n < 25:
+        return 100
+    if n < 100:
+        return 50
+    if n < 200:
+        return 25
+    if n < 500:
+        return 10
+    return 5
+
 def elo(ra, rb, sa, sb, na, nb):
-    ka = na
-    kb = nb
     qa = 10 ** int(ra / 400)
     qb = 10 ** int(rb / 400)
     ea = qa / (qa + qb)
     eb = qb / (qa + qb)
-    return (int(ra + ka * (sa - ea)), int(rb + kb * (sb - eb)))
+    return (int(ra + get_k(na) * (sa - ea)), int(rb + get_k(b) * (sb - eb)))
 
 
 
@@ -215,7 +234,6 @@ class Game(db.Model):
     state = db.Column(db.Text)
     rated = db.Column(db.Boolean)
     combo_moves = db.Column(db.Text)
-    redo_stack = db.Column(db.Text)
 
 
     def __init__(self, white, black, type, rated):
@@ -225,26 +243,12 @@ class Game(db.Model):
         self.type = type
         self.rated = rated
         self.combo_moves = str([2, 22]) # 3, 60
-        self.redo_stack = '[]'
 
     def make_move(self, move):
         self.combo_moves = str(eval(self.combo_moves) + [move])
         self.redo_stack = '[]'
         db.session.commit()
 
-    def undo(self):
-        if self.combo_moves != '[]':
-            combo_moves = eval(self.combo_moves)
-            self.redo_stack = str(eval(self.redo_stack) + combo_moves[-1])
-            self.combo_moves = str(eval(self.combo_moves)[:-1])
-        db.session.commit()
-
-    def redo(self):
-        if self.redo_stack != '[]':
-            redo_stack = eval(self.redo_stack)
-            self.combo_moves = str(eval(self.combo_moves) + redo_stack[-1])
-            self.redo_stack = str(redo_stack[:-1])
-        db.session.commit()
 
 
 def get_game(gameid):
@@ -293,6 +297,7 @@ def get_account_bar():
     if is_user_and_logged_in:
         username = user.username
         num_alerts=len(eval(user.challenges)) + len(eval(user.friend_requests))
+        user.check_in()
     return render_template(
         'account_bar.html',
         logged_in=is_user_and_logged_in,
@@ -370,12 +375,13 @@ def play():
     logged_in, s_user = get_session_user()
     if not logged_in:
         return redirect('/')
+    print(get_recent_and_public_users())
     return render_template(
         'play.html',
         account_bar = get_account_bar(),
         footer = get_footer(),
         s_user = s_user,
-        online_plays = get_online_and_public_users(),
+        recent_players = get_recent_and_public_users(),
         friends = get_users_from_list(eval(s_user.friends))
     )
 
@@ -437,6 +443,12 @@ def signup():
     return 'Signup successful', 200
 
 
+@app.route('/sys_access', methods=['POST'])
+def sys_access():
+    return 
+
+
+
 @app.route('/user_access', methods=['POST'])
 def user_access():
     username = request.form['username']
@@ -477,10 +489,6 @@ def user_access():
         d_username = request.form['d_username']
         user.remove_friend_request(d_username)
         return 'deny_friend_request successful', 200
-    # if method == 'remove_friend':
-    #     f_username = request.form['f_username']
-    #     user.remove_friend(f_username)
-    #     return 'remove_friend successful', 200
     if method == 'challenge':
         c_username = request.form['c_username']
         rated = request.form['rated']
@@ -491,6 +499,8 @@ def user_access():
             return "You can't challenge yourself!", 403
         if c_user.get_challenge(user.username)[0]:
             return "You already challenged them", 403
+        if not (user.has_frined(c_user.username) or c_user.public):
+            return "You can only challenge public users or your friends", 403
         c_user.add_challenge(username, rated == 'true')
         return 'request_friend successful', 200
     if method == 'accept_challenge':
