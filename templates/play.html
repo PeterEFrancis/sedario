@@ -11,9 +11,6 @@
 
     <link rel="stylesheet" href="/static/css/style.css">
 
-    <style>
-
-    </style>
 
   </head>
   <body>
@@ -73,7 +70,7 @@
                   },
                   error: function(error) {
                     document.getElementById('challenge-feedback').innerHTML = error.responseText;
-                    console.log(error.responseText);
+                    console.error(error.responseText);
                   },
                 });
               }
@@ -107,7 +104,6 @@
                   type: 'POST',
                   cache: false,
                   success: function(recents) {
-                    console.log(recents);
                     if (recents.length == 0) {
                       document.getElementById('no-recent-players').style.display = "block";
                       document.getElementById('recent-form').style.display = "none";
@@ -119,7 +115,6 @@
                         recents_dom.removeChild(recents_dom.lastChild);
                       }
                       for (let i = 0; i < recents.length; i++) {
-                        console.log(recents[i][0]);
                         let option = document.createElement('option');
                         option.value = recents[i][0];
                         option.innerHTML = recents[i][0] + " (" + recents[i][1] + " min ago)";
@@ -128,7 +123,7 @@
                     }
                   },
                   error: function(error) {
-                    console.log(error.responseText);
+                    console.error(error.responseText);
                   },
                 });
               }
@@ -137,7 +132,7 @@
 
               function challenge_recent() {
                 let sel = document.getElementById('choosen-recent');
-                let c_username = sel.options[sel.selectedIndex].text;
+                let c_username = sel.options[sel.selectedIndex].value;
                 let rated = document.getElementById('rated-2').checked;
                 $.ajax({
                   url: '/user_access',
@@ -154,7 +149,7 @@
                   },
                   error: function(error) {
                     document.getElementById('challenge-feedback-2').innerHTML = error.responseText;
-                    console.log(error.responseText);
+                    console.error(error.responseText);
                   },
                 });
               }

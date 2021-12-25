@@ -128,78 +128,19 @@
         <div class="col-md-6">
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 id="challenges" class="text-center">Challenges</h3>
+              <h3 id="challenges" class="text-center">Challenges <span id="num-challenges" class="badge" style="background-color: var(--orange)"></span></h3>
             </div>
             <div class="panel-body">
-              {% if challenges == [] %}
-              <p>You have no challenges</p>
-              {% else %}
-              <ul class="list-group dark">
-                {% for c in challenges %}
-                <li class="list-group-item dark">
-                  <a href="/user/{{ c[0] }}">{{ c[0] }}</a> ({% if not c[1] %}un{% endif %}rated)
-                  <button style="float:right; margin-top: -0.33em;" class="btn btn-sm btn-danger" onclick='deny_challenge("{{ c[0] }}")'>Deny</button>
-                  <button style="float:right; margin-top: -0.33em; margin-right: 10px;" class="btn btn-sm btn-success" onclick='accept_challenge("{{ c[0] }}");'>Accept</button>
-                </li>
-                {% endfor %}
-              </ul>
-              {% endif %}
-              <script>
-                function accept_challenge(c_username) {
-                  $.ajax({
-                    url: '/user_access',
-                    data: {
-                      'method': 'accept_challenge',
-                      'username': {{ user.username|tojson }},
-                      'c_username': c_username
-                    },
-                    type: 'POST',
-                    cache: false,
-                    success: function(response) {
-                      location.href = response;
-                    },
-                    error: function(error) {
-                      console.log(error.responseText);
-                    },
-                  });
-                }
-                function deny_challenge(c_username) {
-                  $.ajax({
-                    url: '/user_access',
-                    data: {
-                      'method': 'deny_challenge',
-                      'username': {{ user.username|tojson }},
-                      'c_username': c_username
-                    },
-                    type: 'POST',
-                    cache: false,
-                    success: function(response) {
-                      location.reload(true)
-                    },
-                    error: function(error) {
-                      console.log(error.responseText);
-                    },
-                  });
-                }
-              </script>
+              <p id="no-challenges">You have no challenges</p>
+              <ul id="challenges-list" class="list-group dark"></ul>
             </div>
           </div>
           <div class="panel dark">
             <div class="panel-heading">
               <h3 id="current-games" class="text-center">Current Games</h3>
               <div class="panel-body">
-                {% if current_games == [] %}
-                <p>You have no current games</p>
-                {% else %}
-                <ul class="list-group dark">
-                  {% for g in current_games %}
-                  <li class="list-group-item dark">
-                    {{ g[0] }}</a> (#{{ g[1] }})
-                    <button style="float:right; margin-top: -0.33em; margin-right: 10px;" class="btn btn-sm btn-success" onclick='location.href="/game/{{ g[1] }}"'>Open</button>
-                  </li>
-                  {% endfor %}
-                </ul>
-                {% endif %}
+                <p id="no-current-games">You have no current games</p>
+                <ul id="current-games-list" class="list-group dark"></ul>
               </div>
             </div>
           </div>
@@ -212,60 +153,11 @@
         <div class="col-md-6">
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 id="friend-requests" class="text-center">Friend Requests</h3>
+              <h3 id="friend-requests" class="text-center">Friend Requests <span id="num-friend-requests" class="badge" style="background-color: var(--orange)"></span></h3>
             </div>
             <div class="panel-body">
-              {% if friend_requests == [] %}
-              <p>You have no friend requests</p>
-              {% else %}
-              <ul class="list-group dark">
-                {% for r_user in friend_requests %}
-                <li class="list-group-item dark">
-                  <a href="/user/{{ r_user }}">{{ r_user }}</a> <span class="badge">{{ r_user.elo }}</span>
-                  <button style="float:right; margin-top: -0.33em;" class="btn btn-sm btn-danger" onclick='deny_friend_request({{ r_user|tojson }})'>Deny</button>
-                  <button style="float:right; margin-top: -0.33em; margin-right: 10px;" class="btn btn-sm btn-success" onclick='accept_friend_request({{ r_user|tojson }})'>Accept</button>
-                </li>
-                {% endfor %}
-              </ul>
-              {% endif %}
-              <script>
-                function accept_friend_request(a_username) {
-                  $.ajax({
-                    url: '/user_access',
-                    data: {
-                      'method': 'accept_friend_request',
-                      'username': {{ user.username|tojson }},
-                      'a_username': a_username
-                    },
-                    type: 'POST',
-                    cache: false,
-                    success: function(response) {
-                      location.reload(true)
-                    },
-                    error: function(error) {
-                      console.log(error.responseText);
-                    },
-                  });
-                }
-                function deny_friend_request(d_username) {
-                  $.ajax({
-                    url: '/user_access',
-                    data: {
-                      'method': 'deny_friend_request',
-                      'username': {{ user.username|tojson }},
-                      'd_username': d_username
-                    },
-                    type: 'POST',
-                    cache: false,
-                    success: function(response) {
-                      location.reload(true)
-                    },
-                    error: function(error) {
-                      console.log(error.responseText);
-                    },
-                  });
-                }
-              </script>
+              <p id="no-friend-requests">You have no friend requests</p>
+              <ul id="friend-requests-list" class="list-group dark"></ul>
             </div>
           </div>
           <div class="panel dark">
@@ -313,7 +205,7 @@
             </div>
             <div class="panel-body">
               <div class="input-group">
-                <input id="r_username" class="form-control dark" placeholder="username" type="text" oninput="this.value = this.value.split('').map(x=>x.toLowerCase()).map(x=>'1234567890qwertyuiopasdfghjklzxcvbnm'.includes(x) ? x : '').join('')">
+                <input id="r_username" class="form-control dark" placeholder="username" type="text" oninput="this.value = alphanum(this.value);">
                 <span class="input-group-btn">
                   <button type="button" class="btn btn-success" style="border: 1px solid var(--light)" onclick='request_friend()'>Request</button>
                 </span>
@@ -355,19 +247,252 @@
 
   <script>
 
-    function get_friend_requests() {
-
+    function accept_friend_request(a_username) {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'accept_friend_request',
+          'username': {{ user.username|tojson }},
+          'a_username': a_username
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          location.reload(true);
+        },
+        error: function(error) {
+          console.log(error.responseText);
+        },
+      });
+    }
+    function deny_friend_request(d_username) {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'deny_friend_request',
+          'username': {{ user.username|tojson }},
+          'd_username': d_username
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          location.reload(true)
+        },
+        error: function(error) {
+          console.log(error.responseText);
+        },
+      });
     }
 
+    function get_friend_requests() {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'get_friend_requests',
+          'username': {{ user.username|tojson }},
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          if (response.length == 0) {
+            document.getElementById('no-friend-requests').style.display = 'block';
+            document.getElementById('friend-requests-list').style.display = 'none';
+          } else {
+            let num = document.getElementById('num-friend-requests');
+            num.style.display = "inline";
+            num.innerHTML = Number(num.innerHTML || 0) + response.length;
+
+            document.getElementById('no-friend-requests').style.display = 'none';
+            document.getElementById('friend-requests-list').style.display = 'block';
+            document.getElementById('friend-requests-list').innerHTML = '';
+            for (let i = 0; i < response.length; i++) {
+              let li = document.createElement('li');
+              li.classList.add('list-group-item', 'dark');
+              let a = document.createElement('a');
+              a.href = "/user/" + response[i];
+              a.innerHTML = response[i];
+              let deny = document.createElement('button');
+              deny.classList.add('btn', 'btn-sm', 'btn-danger', 'li-btn');
+              const u = response[i];
+              deny.onclick = function() {
+                deny_friend_request(u);
+              }
+              deny.innerHTML = "Deny";
+              let accept = document.createElement('button');
+              accept.classList.add('btn', 'btn-sm', 'btn-success', 'li-btn');
+              accept.onclick = function() {
+                accept_friend_request(u);
+              }
+              accept.innerHTML = "Accept";
+              li.appendChild(a);
+              li.appendChild(deny);
+              li.appendChild(accept);
+              document.getElementById('friend-requests-list').appendChild(li);
+            }
+          }
+        },
+        error: function(error) {
+          console.log(error.responseText);
+        },
+      });
+    }
+
+    get_friend_requests();
+    socket.on('update friend requests', function() {
+      get_friend_requests();
+    })
+
+
+    function accept_challenge(c_username) {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'accept_challenge',
+          'username': {{ user.username|tojson }},
+          'c_username': c_username
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          location.href = response;
+        },
+        error: function(error) {
+          console.log(error.responseText);
+        },
+      });
+    }
+    function deny_challenge(c_username) {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'deny_challenge',
+          'username': {{ user.username|tojson }},
+          'c_username': c_username
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          location.reload(true)
+        },
+        error: function(error) {
+          console.log(error.responseText);
+        },
+      });
+    }
 
     function get_challenges() {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'get_challenges',
+          'username': {{ user.username|tojson }},
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          if (response.length == 0) {
+            document.getElementById('no-challenges').style.display = 'block';
+            document.getElementById('challenges-list').style.display = 'none';
+          } else {
+            let num = document.getElementById('num-challenges');
+            num.style.display = "inline";
+            num.innerHTML = Number(num.innerHTML || 0) + response.length;
 
+            document.getElementById('no-challenges').style.display = 'none';
+            document.getElementById('challenges-list').style.display = 'block';
+            document.getElementById('challenges-list').innerHTML = '';
+
+            for (let i = 0; i < response.length; i++) {
+              let li = document.createElement('li');
+              li.classList.add('list-group-item', 'dark');
+              let a = document.createElement('a');
+              a.href = "/user/" + response[i][0];
+              a.innerHTML = response[i][0];
+              let deny = document.createElement('button');
+              deny.classList.add('btn', 'btn-sm', 'btn-danger', 'li-btn');
+              const u = response[i][0];
+              deny.onclick = function() {
+                deny_challenge(u);
+              }
+              deny.innerHTML = "Deny";
+              let accept = document.createElement('button');
+              accept.classList.add('btn', 'btn-sm', 'btn-success', 'li-btn');
+              accept.onclick = function() {
+                accept_challenge(u);
+              }
+              accept.innerHTML = "Accept";
+              li.appendChild(a);
+              li.appendChild(document.createTextNode(' (' + (response[i][1] ? '' : 'un') + 'rated)'));
+              li.appendChild(deny);
+              li.appendChild(accept);
+              document.getElementById('challenges-list').appendChild(li);
+            }
+          }
+        },
+        error: function(error) {
+          console.log(error.responseText);
+        },
+      });
     }
+
+    get_challenges();
+    socket.on('update challenges', function() {
+      get_challenges();
+    })
 
 
     function get_current_games() {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'get_current_games',
+          'username': {{ user.username|tojson }},
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          if (response.length == 0) {
+            document.getElementById('no-current-games').style.display = 'block';
+            document.getElementById('current-games-list').style.display = 'none';
+          } else {
+            document.getElementById('no-current-games').style.display = 'none';
+            document.getElementById('current-games-list').style.display = 'block';
+            document.getElementById('current-games-list').innerHTML = '';
+
+            for (let i = 0; i < response.length; i++) {
+              let li = document.createElement('li');
+              li.classList.add('list-group-item', 'dark');
+              let a = document.createElement('a');
+              a.href = "/user/" + response[i][0];
+              a.innerHTML = response[i][0];
+              let play = document.createElement('button');
+              play.classList.add('btn', 'btn-sm', 'btn-success', 'li-btn');
+              play.onclick = function() {
+                location.href = "/game/" + response[i][1];
+              }
+              play.innerHTML = "Play";
+              li.appendChild(a);
+              li.appendChild(document.createTextNode(' (game #' + (response[i][1] + ')')));
+              li.appendChild(play);
+              document.getElementById('current-games-list').appendChild(li);
+            }
+          }
+        },
+        error: function(error) {
+          console.error(error.responseText);
+        },
+      });
+    }
+
+    get_current_games();
+    socket.on('update current games', function() {
+      get_current_games();
+    });
+
+    function get_past_games() {
 
     }
+
 
   </script>
 

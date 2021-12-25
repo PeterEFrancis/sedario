@@ -14,7 +14,7 @@
     let alert_block = document.createElement('div');
     alert_block.classList.add('alert');
     alert_block.classList.add('alert-dismissible');
-    if (data['addon']) {
+    if (data['link']) {
       alert_block.onclick = function() {
         location.href = data['link'];
       }
@@ -32,9 +32,17 @@
     let cont = document.getElementById('account-bar-container');
     cont.insertBefore(alert_block, cont.firstChild);
     let num = document.getElementById('num-alerts');
-    num.style.display = "inline";
-    num.innerHTML = Number(num.innerHTML || 0) + data['add'];
+    let n = Number(num.innerHTML || 0) + data['add'];
+    if (n != 0) {
+      num.innerHTML = n;
+      num.style.display = "inline";
+    }
   });
+
+
+    function alphanum(str) {
+      return str.split('').map(x=>x.toLowerCase()).map(x=>'1234567890qwertyuiopasdfghjklzxcvbnm'.includes(x) ? x : '').join('');
+    }
 
 </script>
 
@@ -106,7 +114,7 @@
           <span class="input-group-addon">
             <span class="glyphicon glyphicon-user"></span>
           </span>
-          <input id="signup-username" class="form-control signup" placeholder="username"/>
+          <input id="signup-username" class="form-control signup" placeholder="username" oninput="this.value = alphanum(this.value);"/>
         </div>
         <div class="input-group" style="margin-top: 20px;">
           <span class="input-group-addon">
@@ -136,7 +144,7 @@
     for (i = 0, len = str.length; i < len; i++) {
       code = str.charCodeAt(i);
       if (!(code > 47 && code < 58) && // numeric (0-9)
-          !(code > 64 && code < 91) && // upper alpha (A-Z)
+          // !(code > 64 && code < 91) && // upper alpha (A-Z)
           !(code > 96 && code < 123)) { // lower alpha (a-z)
         return false;
       }
@@ -150,7 +158,7 @@
     const password = document.getElementById('signup-password').value;
     const confirm_password = document.getElementById('signup-confirm-password').value;
     if (!isAlphaNumeric(username)) {
-      signup_error.innerHTML = 'username must contain only alphanumeric characters';
+      signup_error.innerHTML = 'username must contain only lowercase letters and numbers';
     } else if (password != confirm_password) {
       signup_error.innerHTML = 'passwords do not match';
     } else {

@@ -358,9 +358,9 @@ def user(username):
             footer = get_footer(),
             user = user,
             friends = get_users_from_list(eval(user.friends)),
-            friend_requests = eval(user.friend_requests),
-            challenges = eval(user.challenges),
-            current_games = [(g.black if g.white == s_user.username else g.white, g.id) for g in get_games_from_list(eval(user.current_games))]
+            # friend_requests = eval(user.friend_requests),
+            # challenges = eval(user.challenges),
+            # current_games = [(g.black if g.white == s_user.username else g.white, g.id) for g in get_games_from_list(eval(user.current_games))]
         )
     # other person's account
     return render_template(
@@ -508,7 +508,7 @@ def user_access():
         socketio.emit('alert', {
             'msg':user.username + " accepted your friend request",
             'add': 0,
-            'link': f'/user/{r_user.username}#friends'
+            'link': f'/user/{a_user.username}#friends'
         }, room="user-" + a_user.username)
         return 'accept_friend_request successful', 200
     if method == 'deny_friend_request':
@@ -533,6 +533,7 @@ def user_access():
             'add': 1,
             'link': f'/user/{c_user.username}#challenges'
         }, room="user-"+c_user.username);
+        socketio.emit('update challenges')
         return 'request_friend successful', 200
     if method == 'accept_challenge':
         c_username = request.form['c_username']
@@ -554,11 +555,20 @@ def user_access():
             'add': 0,
             'link': f'/game/{game.id}'
         }, room='user-' + c_user.username)
+        socketio.emit('update current games', room='user-'+c_user.username)
+        socketio.emit('update current games', room='user-'+user.username)
         return f'/game/{game.id}', 200
     if method == 'deny_challenge':
         c_username = request.form['c_username']
         user.remove_challenge(c_username)
         return 'deny_challenge successful', 200
+
+    if method == 'get_friend_requests':
+        return jsonify(eval(user.friend_requests)), 200
+    if method == 'get_challenges':
+        return jsonify(eval(user.challenges)), 200
+    if method == 'get_current_games':
+        return jsonify([(g.black if g.white == s_user.username else g.white, g.id) for g in get_games_from_list(eval(user.current_games))])
 
     return 'Access Denied: The method you are trying to access does not exist', 403
 
