@@ -56,7 +56,7 @@
               <script>
               function challenge_friend() {
                 let sel = document.getElementById('choosen-friend');
-                let c_username = sel.options[sel.selectedIndex].text;
+                let c_username = sel.options[sel.selectedIndex].value;
                 let rated = document.getElementById('rated').checked;
                 $.ajax({
                   url: '/user_access',
@@ -86,26 +86,54 @@
               <h3 class="text-center">Play Online Players</h3>
             </div>
             <div class="panel-body">
-              {% if recent_players == [] %}
-              <p>There are no players online</p>
-              {% else %}
-              <div class="form-group">
+              <p id="no-recent-players">There are no recent players</p>
+              <div id="recent-form" class="form-group" style="display: none">
                 <label for="choosen-recent">Choose a Recent Player:</label>
-                <select class="form-control" id="choosen-recent">
-                  {% for u in recent_players %}
-                  <option value="{{ u[0] }}">{{ u[0] }} (last seen: {{ u[1] }} min ago)</option>
-                  {% endfor %}
-                </select>
+                <select class="form-control" id="choosen-recent"></select>
                 <div class="checkbox">
                   <label><input id="rated-2" type="checkbox" value="rated">Rated</label>
                 </div>
+                <button class="btn btn-success btn-block" onclick="challenge_recent()">Challenge!</button>
               </div>
-              <button class="btn btn-success btn-block" onclick="challenge_recent()">Challenge!</button>
               <p id="challenge-feedback-2" style="margin-top: 1em;"></p>
               <script>
+
               function load_recents() {
-                // DO THIS
+                $.ajax({
+                  url: '/sys_access',
+                  data: {
+                    'method': 'recent_players',
+                  },
+                  type: 'POST',
+                  cache: false,
+                  success: function(recents) {
+                    console.log(recents);
+                    if (recents.length == 0) {
+                      document.getElementById('no-recent-players').style.display = "block";
+                      document.getElementById('recent-form').style.display = "none";
+                    } else {
+                      document.getElementById('no-recent-players').style.display = "none";
+                      document.getElementById('recent-form').style.display = "block";
+                      let recents_dom = document.getElementById('choosen-recent');
+                      while (recents_dom.firstChild) {
+                        recents_dom.removeChild(recents_dom.lastChild);
+                      }
+                      for (let i = 0; i < recents.length; i++) {
+                        console.log(recents[i][0]);
+                        let option = document.createElement('option');
+                        option.value = recents[i][0];
+                        option.innerHTML = recents[i][0] + " (" + recents[i][1] + " min ago)";
+                        recents_dom.appendChild(option);
+                      }
+                    }
+                  },
+                  error: function(error) {
+                    console.log(error.responseText);
+                  },
+                });
               }
+              load_recents();
+              setInterval(load_recents, 60000);
 
               function challenge_recent() {
                 let sel = document.getElementById('choosen-recent');
@@ -131,7 +159,6 @@
                 });
               }
               </script>
-              {% endif %}
             </div>
           </div>
         </div>

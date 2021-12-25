@@ -93,3 +93,10 @@ a {
 input {
   outline: 0 !important;
 }
+
+.alert {
+  color: var(--light);
+  margin-top: 5px;
+  margin-bottom: 5px;
+  background-color: var(--orange);
+}

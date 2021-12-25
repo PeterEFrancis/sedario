@@ -13,9 +13,6 @@
 
     <link rel="stylesheet" href="/static/css/style.css">
 
-    <!-- socketIO -->
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
-
 
     <script src="../static/js/sedario.js"></script>
   </head>
@@ -37,7 +34,8 @@
           <div class="panel dark">
             <div class="panel-heading">
               <h3 class="text-center">
-                <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span> - vs -
+                <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span>
+                - vs -
                 <span style="background-color: black; padding: 5px; border-radius: 5px;">{{ game.black }}</span>
               </h3>
             </div>
@@ -72,15 +70,14 @@
   </body>
 
 
-  {% if game.state == 'p' %}
-
   <script>
 
+    var s, vs;
 
-    function set_screen(combo_moves) {
-      const s = new State(5);
+    function set_screen_p(combo_moves) {
+      s = new State(8);
       s.set_from_combo_moves(combo_moves);
-      let vs = new ViewState(s, {% if game.white == user.username %}WHITE{% else %}BLACK{% endif %});
+      vs = new ViewState(s, {% if game.white == user.username %}WHITE{% else %}BLACK{% endif %});
       let cont = document.getElementById('canvas-container');
       while (cont.hasChildNodes()) {
         cont.removeChild(cont.childNodes[0]);
@@ -100,7 +97,7 @@
           type: 'POST',
           cache: false,
           success: function(response) {
-            update();
+            update_p();
           },
           error: function(error){
             console.error(error.responseText);
@@ -111,7 +108,7 @@
 
 
 
-    function update() {
+    function update_p() {
       $.ajax({
         url: '/game_access',
         data: {
@@ -121,7 +118,10 @@
         type: 'POST',
         cache: false,
         success: function(response) {
-          set_screen(JSON.parse(response));
+          // if different
+          if (response.length != s.moves[WHITE].length + s.moves[BLACK].length) {
+            set_screen_p(response);
+          }
         },
         error: function(error){
           console.error(error);
@@ -129,32 +129,23 @@
       });
     }
 
-
-
-
-
-    var socket = io({transports: ['websocket']});
-
-    socket.on('connect', function() {
-      console.log('connected to socketIO');
-    });
-
     // join game
     socket.emit('join game', {id:'{{ game.id }}'});
 
-    // reload
-    socket.on('reload', function(msg) {
-      location.reload(true);
+    set_screen_p(JSON.parse({{ game.combo_moves|tojson }}));
+    // changes to board play
+    socket.on('update game p', function(msg) {
+      update_p();
     });
 
-    set_screen(JSON.parse({{ game.combo_moves|tojson }}));
-    // changes to board
-    socket.on('update game', function(msg) {
-      update();
+    // changes to board review
+    socket.on('update game r', function(msg) {
+      update_p();
     });
+
+
   </script>
 
-  {% endif %}
 
 
 </html>

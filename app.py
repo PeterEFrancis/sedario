@@ -75,6 +75,19 @@ def time_tasks():
     if time.time() > float(get_SysData().last_time_ranked) + 60 * 60:
         set_user_ranks()
 
+def get_recent_and_public_users():
+    public = db.session.query(User).filter(User.public == True)
+    recents = []
+    for u in public:
+        t = int((time.time() - eval(u.last_seen)) / 60)
+        if t < 30:
+            recents.append([u.username, t])
+    recents.sort(key = lambda x: x[1])
+    return recents[:30]
+
+
+
+
 
 
 class User(db.Model):
@@ -182,15 +195,6 @@ def get_user(username):
     is_user = len(list(users)) != 0
     return is_user, users[0] if is_user else None
 
-def get_recent_and_public_users():
-    public = db.session.query(User).filter(User.public == True)
-    recents = []
-    for u in public:
-        t = int((time.time() - eval(u.last_seen)) / 60)
-        if t < 30:
-            recents.append((u.username, t))
-    return recents
-
 def get_users_from_list(u_list):
     return [u[1] for u in [get_user(u) for u in u_list] if u[0]]
 
@@ -223,7 +227,7 @@ def elo(ra, rb, sa, sb, na, nb):
 
 # game states
 # - p (playing)
-# - f (finished)
+# - r (review)
 
 class Game(db.Model):
     __tablename__ = "games"
@@ -242,7 +246,7 @@ class Game(db.Model):
         self.state = 'p'
         self.type = type
         self.rated = rated
-        self.combo_moves = str([2, 22]) # 3, 60
+        self.combo_moves = '[]' # 3, 60
 
     def make_move(self, move):
         self.combo_moves = str(eval(self.combo_moves) + [move])
@@ -445,7 +449,18 @@ def signup():
 
 @app.route('/sys_access', methods=['POST'])
 def sys_access():
-    return 
+    logged_in, s_user = get_session_user()
+    if not logged_in:
+        return 'Access Denied: You are not logged in', 401
+
+    method = request.form['method']
+    if method == "recent_players":
+        recents = get_recent_and_public_users()
+        print([el for el in recents if el[0] != s_user.username])
+        return jsonify([el for el in recents if el[0] != s_user.username]), 200
+
+
+    return "The method you are trying to access doesn't exist", 403
 
 
 
@@ -475,6 +490,12 @@ def user_access():
         if r_user.has_friend_request(user.username):
             return "You already requested to be their friend", 403
         r_user.add_friend_request(username)
+        socketio.emit('alert', {
+            'msg':f'You have a friend request from {user.username}.',
+            'add': 1,
+            'link': f'/user/{r_user.username}#friend-requests'
+        }, room='user-'+r_user.username)
+        socketio.emit('update friend requests', room='user-'+r_user.username)
         return 'request_friend successful', 200
     if method == 'accept_friend_request':
         a_username = request.form['a_username']
@@ -484,6 +505,11 @@ def user_access():
         user.remove_friend_request(a_username)
         user.add_friend(a_username)
         a_user.add_friend(user.username)
+        socketio.emit('alert', {
+            'msg':user.username + " accepted your friend request",
+            'add': 0,
+            'link': f'/user/{r_user.username}#friends'
+        }, room="user-" + a_user.username)
         return 'accept_friend_request successful', 200
     if method == 'deny_friend_request':
         d_username = request.form['d_username']
@@ -499,9 +525,14 @@ def user_access():
             return "You can't challenge yourself!", 403
         if c_user.get_challenge(user.username)[0]:
             return "You already challenged them", 403
-        if not (user.has_frined(c_user.username) or c_user.public):
+        if not (user.has_friend(c_user.username) or c_user.public):
             return "You can only challenge public users or your friends", 403
         c_user.add_challenge(username, rated == 'true')
+        socketio.emit('alert', {
+            'msg': username + " challenged you!",
+            'add': 1,
+            'link': f'/user/{c_user.username}#challenges'
+        }, room="user-"+c_user.username);
         return 'request_friend successful', 200
     if method == 'accept_challenge':
         c_username = request.form['c_username']
@@ -518,6 +549,11 @@ def user_access():
         user.add_game(game.id)
         c_user.add_game(game.id)
         db.session.commit()
+        socketio.emit('alert', {
+            'msg': f"{user.username} accepted your challenge. Click <a href='/game/{game.id}'>here</a> to play!",
+            'add': 0,
+            'link': f'/game/{game.id}'
+        }, room='user-' + c_user.username)
         return f'/game/{game.id}', 200
     if method == 'deny_challenge':
         c_username = request.form['c_username']
@@ -546,13 +582,13 @@ def game_access():
 
     method = request.form['method']
     if method == 'get':
-        return game.combo_moves, 200
+        return jsonify(eval(game.combo_moves)), 200
     if method == 'move':
         game.make_move(int(request.form['square']))
-        socketio.emit('update game', room=f'game-{game_id}')
+        socketio.emit('update game p', room=f'game-{game_id}')
         if request.form['game_over'] == "true":
             # game over
-            game.state = 'f'
+            game.state = 'r'
             white = get_user(game.white)[1]
             black = get_user(game.black)[1]
             white.end_game(game.id)
@@ -569,11 +605,24 @@ def game_access():
     return "The method you are trying to access doesn't exist", 403
 
 
+
+#                 _        _
+#  ___  ___   ___| | _____| |_
+# / __|/ _ \ / __| |/ / _ \ __|
+# \__ \ (_) | (__|   <  __/ |_
+# |___/\___/ \___|_|\_\___|\__|
+
+
+
 @socketio.on('join game')
-def join_game(data):
+def join_game_p(data):
     join_room('game-' + data['id'])
 
 
+
+@socketio.on('check in')
+def check_in(data):
+    join_room('user-' + data['username'])
 
 
 
@@ -617,12 +666,14 @@ def initialize():
     users = [
         ['aaa1','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
         ['aaa2','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
-        ['admin','Kg63KSRjsr5js','ff92bed28c618a2b17303ffefa5e40fd2e3c286e']
+        ['aaa3','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
+        ['aaa4','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
     ]
     for username, salt, hash in users:
         u = User(username,'pass')
         u.salt = salt
         u.hashed_password = hash
+        u.public = True
         db.session.add(u)
         db.session.commit()
 

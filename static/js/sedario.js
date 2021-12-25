@@ -137,57 +137,70 @@ class State {
 
   _find_possible_moves() {
     this.possible_moves = [];
-    let current_mod = this._mod(get_last(this.moves[this.current_player]));
-    const dirs = [
-      [1, 0], // 0      down
-      [1, 1], // 1      right down
-      [0, 1], // 2      right
-      [-1, 1], // 3     right up
-      [-1, 0], // 4     up
-      [-1, -1], // 5    left up
-      [0, -1], // 6     left
-      [1, -1] // 7      left down
-    ];
-    for (let d = 0; d < dirs.length; d++) {
-      let r = current_mod.r + dirs[d][0];
-      let c = current_mod.c + dirs[d][1];
-      while (c >= 0 && c < this.n && r >= 0 && r < this.n) {
-        let sq = this._sq(r, c);
-        if (
-          (this.board[sq] != EMPTY)
-          || ((d == 1) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq - 1)) // moving down + right
-          || ((d == 3) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq - 1)) // moving up + right
-          || ((d == 5) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq + 1)) // moving up + left          
-          || ((d == 7) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq + 1)) // moving down + left
-        ) {
-          break;
+    if (this.moves[this.current_player].length == 0) {
+      for (let i = 0; i < this.board.length; i++) {
+        if (this.board[i] === EMPTY) {
+          this.possible_moves.push(i);
         }
-
-        this.possible_moves.push(sq);
-        r += dirs[d][0];
-        c += dirs[d][1];
+      }
+    } else {
+      let current_mod = this._mod(get_last(this.moves[this.current_player]));
+      const dirs = [
+        [1, 0],   // 0    down
+        [1, 1],   // 1    right down
+        [0, 1],   // 2    right
+        [-1, 1],  // 3    right up
+        [-1, 0],  // 4    up
+        [-1, -1], // 5    left up
+        [0, -1],  // 6    left
+        [1, -1]   // 7    left down
+      ];
+      for (let d = 0; d < dirs.length; d++) {
+        let r = current_mod.r + dirs[d][0];
+        let c = current_mod.c + dirs[d][1];
+        while (c >= 0 && c < this.n && r >= 0 && r < this.n) {
+          let sq = this._sq(r, c);
+          if (
+            (this.board[sq] != EMPTY)
+            || ((d == 1) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq - 1)) // moving down + right
+            || ((d == 3) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq - 1)) // moving up + right
+            || ((d == 5) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq + 1)) // moving up + left
+            || ((d == 7) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq + 1)) // moving down + left
+          ) {
+            break;
+          }
+          this.possible_moves.push(sq);
+          r += dirs[d][0];
+          c += dirs[d][1];
+        }
       }
     }
   }
 
   can_move_to(sq) {
-    return this.possible_moves.includes(sq);
+    return this.possible_moves.includes(sq) || (this.moves[this.current_player].length == 0 && this.board[sq] == EMPTY);
   }
 
   move_to(square) {
     // assuming that this is an allowed move
-    this.board[get_last(this.moves[this.current_player])] = FILLED;
+    let first_placing = this.moves[this.current_player].length == 0;
+    if (!first_placing) {
+      this.board[get_last(this.moves[this.current_player])] = FILLED;
+    }
     this.board[square] = this.current_player;
     this.moves[this.current_player].push(square);
-    this._arrowize(
-      ...py_slice(this.moves[this.current_player], -2),
-      get_last(this.moves[this._opponent()])
-    );
+    if (!first_placing) {
+      this._arrowize(
+        ...py_slice(this.moves[this.current_player], -2),
+        get_last(this.moves[this._opponent()])
+      );
+    }
     this._switch_players();
     this._find_possible_moves();
   }
 
 }
+
 
 
 
@@ -344,8 +357,5 @@ class ViewState {
     return this.canvas;
   }
 
-  get_base_state() {
-    return;
-  }
 
 }

@@ -100,7 +100,8 @@
           </div>
           <div class="modal-body">
             <div class="checkbox">
-              <label><input id="public" type="checkbox" value="public" {% if user.public %} checked {% endif %}>Public Account</label>
+              <label><input id="public" type="checkbox" value="public" {% if user.public %} checked {% endif %}>Public Account*</label><br>
+              <span class="small">(*Public accounts show up on the "recent players" list.)</span>
             </div>
           </div>
           <div class="modal-footer">
@@ -127,7 +128,7 @@
         <div class="col-md-6">
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center">Challenges</h3>
+              <h3 id="challenges" class="text-center">Challenges</h3>
             </div>
             <div class="panel-body">
               {% if challenges == [] %}
@@ -185,7 +186,7 @@
           </div>
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center">Current Games</h3>
+              <h3 id="current-games" class="text-center">Current Games</h3>
               <div class="panel-body">
                 {% if current_games == [] %}
                 <p>You have no current games</p>
@@ -204,14 +205,14 @@
           </div>
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center">Past Games</h3>
+              <h3 id="past-games" class="text-center">Past Games</h3>
             </div>
           </div>
         </div>
         <div class="col-md-6">
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center">Friend Requests</h3>
+              <h3 id="friend-requests" class="text-center">Friend Requests</h3>
             </div>
             <div class="panel-body">
               {% if friend_requests == [] %}
@@ -269,7 +270,7 @@
           </div>
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center">Friends</h3>
+              <h3 id="friends" class="text-center">Friends</h3>
             </div>
             <div class="panel-body">
               {% if friends == [] %}
@@ -312,7 +313,7 @@
             </div>
             <div class="panel-body">
               <div class="input-group">
-                <input id="r_username" class="form-control dark" placeholder="username" type="text" oninput="this.value = this.value.split('').map(x=>'1234567890qwertyuiopasdfghjklzxcvbnm'.includes(x) ? x : '').join('')">
+                <input id="r_username" class="form-control dark" placeholder="username" type="text" oninput="this.value = this.value.split('').map(x=>x.toLowerCase()).map(x=>'1234567890qwertyuiopasdfghjklzxcvbnm'.includes(x) ? x : '').join('')">
                 <span class="input-group-btn">
                   <button type="button" class="btn btn-success" style="border: 1px solid var(--light)" onclick='request_friend()'>Request</button>
                 </span>
@@ -351,5 +352,23 @@
 
   </body>
 
+
+  <script>
+
+    function get_friend_requests() {
+
+    }
+
+
+    function get_challenges() {
+
+    }
+
+
+    function get_current_games() {
+
+    }
+
+  </script>
 
 </html>
