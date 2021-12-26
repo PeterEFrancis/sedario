@@ -76,29 +76,40 @@ class State {
     return c + this.n * r;
   }
 
-  _arrowize(_a, _b, _c) {
-    // get arrow from last move a -> b, c
-
-    let a = this._mod(_a);
-    let b = this._mod(_b);
-    let c = this._mod(_c);
-
-    // remove arrow
+  _set_arrow(arrow) {
+    // remove old arrow
     for (let i = 0; i < this.arrow.length; i++) {
       this.board[this.arrow[i]] -= ARROW;
     }
 
-    this.arrow = [];
+    this.arrow = arrow;
+
+    // set new arrow
+    for (let i = 0; i < this.arrow.length; i++) {
+      this.board[this.arrow[i]] += ARROW;
+    }
+
+  }
+
+  _arrowize(sq_a, sq_b, sq_c) {
+    // get arrow from last move a -> b, c
+
+    let a = this._mod(sq_a);
+    let b = this._mod(sq_b);
+    let c = this._mod(sq_c);
+
+    let arrow = [];
 
     // if c is on the line, no arrow. Otherwise, make a new arrow
     if (!is_on_line([a, b], c)) {
       for (let i = 0; i < this.n * this.n; i++) {
         if (is_on_line([a, b], this._mod(i))) {
-          this.arrow.push(i);
-          this.board[i] += ARROW;
+          arrow.push(i);
         }
       }
     }
+
+    return arrow;
   }
 
   set_from_combo_moves(combo_moves) {
@@ -119,10 +130,11 @@ class State {
     this.current_player = combo_moves.length % 2 == 0 ? WHITE : BLACK;
 
     if (this.moves[this._opponent()].length >= 2) {
-      this._arrowize(
+      let arrow = this._arrowize(
         ...py_slice(this.moves[this._opponent()], -2),
         get_last(this.moves[this.current_player])
       );
+      this._set_arrow(arrow);
     }
     this._find_possible_moves();
   }
@@ -190,10 +202,11 @@ class State {
     this.board[square] = this.current_player;
     this.moves[this.current_player].push(square);
     if (!first_placing) {
-      this._arrowize(
+      let arrow = this._arrowize(
         ...py_slice(this.moves[this.current_player], -2),
         get_last(this.moves[this._opponent()])
       );
+      this._set_arrow(arrow);
     }
     this._switch_players();
     this._find_possible_moves();
@@ -216,7 +229,7 @@ class ViewState {
 
     this.one_sided = one_sided; // ommit for False
 
-    this.hover_loc = null;
+    this.hover_sq = null;
 
     this.size = SQUARE * this.n + 2 * (this.n + 1);
 
@@ -229,20 +242,43 @@ class ViewState {
     this.canvas.style.maxWidth = "100%";
     const t = this;
     this.canvas.addEventListener('click', function(evt) {
-      let rect = t.canvas.getBoundingClientRect();
-      let x = (evt.clientX - rect.left) * (t.canvas.width / t.canvas.clientWidth);
-      let y = (evt.clientY - rect.top) * (t.canvas.height / t.canvas.clientHeight);
-      let r = (y - (y % (SQUARE + 2))) / (SQUARE + 2);
-      let c = (x - (x % (SQUARE + 2))) / (SQUARE + 2);
-      let sq = t.state._sq(r, c);
-      if (t.state.can_move_to(sq) && (!t.one_sided || t.one_sided == t.state.current_player)) {
+      let sq = t._get_sq_from_evt(evt);
+      if (
+        t.state.can_move_to(sq) &&
+        (!t.one_sided || t.one_sided == t.state.current_player)
+      ) {
         t.state.move_to(sq);
         t.update_display();
         t.click_handler(sq);
+        t.hover_loc = null;
       }
     });
 
+    this.canvas.addEventListener('mousemove', function(evt) {
+      let sq = t._get_sq_from_evt(evt);
+      if (t.state.can_move_to(sq)) {
+        t.hover_sq = sq;
+      } else {
+        t.hover_sq = null;
+      }
+      t.update_display();
+    });
+
+    this.canvas.addEventListener('mouseout', function(evt) {
+      t.hover_sq = null;
+      t.update_display();
+    });
+
     this.ctx = this.canvas.getContext('2d');
+  }
+
+  _get_sq_from_evt(evt) {
+    let rect = this.canvas.getBoundingClientRect();
+    let x = (evt.clientX - rect.left) * (this.canvas.width / this.canvas.clientWidth);
+    let y = (evt.clientY - rect.top) * (this.canvas.height / this.canvas.clientHeight);
+    let r = (y - (y % (SQUARE + 2))) / (SQUARE + 2);
+    let c = (x - (x % (SQUARE + 2))) / (SQUARE + 2);
+    return this.state._sq(r, c);
   }
 
   _get_loc_from_mod(mod) {
@@ -255,6 +291,39 @@ class ViewState {
   _get_loc_from_sq(sq) {
     let mod = this.state._mod(sq);
     return this._get_loc_from_mod(mod);
+  }
+
+  _get_arrow_info(arrow) {
+    let mods = arrow.map(x => this.state._mod(x));
+    let mod_cs = mods.map(x => x.c);
+    let mod_rs = mods.map(x => x.r);
+    let a_c = Math.min(...mod_cs);
+    let a_r = Math.min(...mod_rs);
+    let b_c = Math.max(...mod_cs);
+    let b_r = Math.max(...mod_rs);
+    let a_loc = this._get_loc_from_mod({c:a_c, r:a_r});
+    let b_loc = this._get_loc_from_mod({c:b_c, r:b_r});
+    if (a_r == b_r) { // horizontal
+      return {
+        start: {x: 0, y: a_loc.y},
+        end: {x: this.size, y: a_loc.y}
+      };
+    } else if (a_c == b_c) { // vertical
+      return {
+        start: {x: a_loc.x, y: 0},
+        end: {x: a_loc.x, y: this.size},
+      };
+    } else if (arrow.includes(a_c + this.n * a_r)) { // slanted down
+      return {
+        start: {x: a_loc.x - SQUARE / 2, y: a_loc.y - SQUARE / 2},
+        end: {x: b_loc.x + SQUARE / 2, y: b_loc.y + SQUARE / 2},
+      };
+    } else { // slanted up
+      return {
+        start: {x: a_loc.x - SQUARE / 2, y: b_loc.y + SQUARE / 2},
+        end: {x: b_loc.x + SQUARE / 2, y: a_loc.y - SQUARE / 2}
+      };
+    }
   }
 
   update_display() {
@@ -292,6 +361,17 @@ class ViewState {
     this.ctx.shadowOffsetX = 0;
     this.ctx.shadowOffsetY = 0;
 
+    // draw arrow
+    this.ctx.strokeStyle = "black";
+    this.ctx.lineWidth = 4;
+    if (this.state.arrow != []) {
+      let arrow_info = this._get_arrow_info(this.state.arrow);
+      this.ctx.beginPath();
+      this.ctx.moveTo(arrow_info.start.x, arrow_info.start.y);
+      this.ctx.lineTo(arrow_info.end.x, arrow_info.end.y);
+      this.ctx.stroke();
+    }
+
     if (!this.one_sided || this.one_sided == this.state.current_player) {
       // add suggestion squares
       this.ctx.fillStyle = "lightgreen";
@@ -299,36 +379,33 @@ class ViewState {
         let loc = this._get_loc_from_sq(this.state.possible_moves[i]);
         this.ctx.fillRect(loc.x - SQUARE / 8, loc.y - SQUARE / 8, SQUARE / 4, SQUARE / 4);
       }
-    }
 
-    // draw arrow
-    this.ctx.strokeStyle = "black";
-    this.ctx.lineWidth = 4;
-    if (this.state.arrow != []) {
-      let mods = this.state.arrow.map(x => this.state._mod(x));
-      let mod_cs = mods.map(x => x.c);
-      let mod_rs = mods.map(x => x.r);
-      let a_c = Math.min(...mod_cs);
-      let a_r = Math.min(...mod_rs);
-      let b_c = Math.max(...mod_cs);
-      let b_r = Math.max(...mod_rs);
-      let a_loc = this._get_loc_from_mod({c:a_c, r:a_r});
-      let b_loc = this._get_loc_from_mod({c:b_c, r:b_r});
-      this.ctx.beginPath();
-      if (a_r == b_r) { // horizontal
-        this.ctx.moveTo(0, a_loc.y);
-        this.ctx.lineTo(this.size, a_loc.y);
-      } else if (a_c == b_c) { // vertical
-        this.ctx.moveTo(a_loc.x, 0);
-        this.ctx.lineTo(a_loc.x, this.size);
-      } else if (this.state.arrow.includes(a_c + this.n * a_r)) { // slanted down
-        this.ctx.moveTo(a_loc.x - SQUARE / 2, a_loc.y - SQUARE / 2);
-        this.ctx.lineTo(b_loc.x + SQUARE / 2, b_loc.y + SQUARE / 2);
-      } else { // slanted up
-        this.ctx.moveTo(a_loc.x - SQUARE / 2, b_loc.y + SQUARE / 2);
-        this.ctx.lineTo(b_loc.x + SQUARE / 2, a_loc.y - SQUARE / 2);
+      // hover
+      if (this.hover_sq != null) {
+        // hover piece
+        this.ctx.fillStyle = this.state.current_player == WHITE ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)';
+        let loc = this._get_loc_from_sq(this.hover_sq);
+        this.ctx.beginPath();
+        this.ctx.arc(loc.x, loc.y, SQUARE / 2.5 , 0, 2 * Math.PI);
+        this.ctx.fill();
+
+        // hover arrow
+        this.ctx.strokeStyle = "grey";
+        this.ctx.lineWidth = 2;
+        let arrow = this.state._arrowize(
+          get_last(this.state.moves[this.state.current_player]),
+          this.hover_sq,
+          get_last(this.state.moves[this.state._opponent()]),
+        );
+        if (arrow != []) {
+          let arrow_info = this._get_arrow_info(arrow);
+          this.ctx.beginPath();
+          this.ctx.moveTo(arrow_info.start.x, arrow_info.start.y);
+          this.ctx.lineTo(arrow_info.end.x, arrow_info.end.y);
+          this.ctx.stroke();
+        }
       }
-      this.ctx.stroke();
+
     }
 
     // if won
