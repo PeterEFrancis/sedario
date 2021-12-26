@@ -12,8 +12,7 @@
 
   socket.on('alert', function(data) {
     let alert_block = document.createElement('div');
-    alert_block.classList.add('alert');
-    alert_block.classList.add('alert-dismissible');
+    alert_block.classList.add('alert', 'alert-dismissible', 'fade', 'in');
     if (data['link']) {
       alert_block.onclick = function() {
         location.href = data['link'];

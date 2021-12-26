@@ -15,11 +15,7 @@
 
     <style>
 
-      .prof-pic {
-        max-width: 100%;
-        background-color: white;
-        border-radius: 50%;
-      }
+
 
     </style>
 
@@ -32,9 +28,9 @@
       <div class="jumbotron dark" style="margin-top: 50px">
         <div class="row">
           <div class="col-xs-3">
-            <div class="prof-pic">
+            <!-- <div class="prof-pic"> -->
               <img src="https://robohash.org/{{ user.username }}.png?size=200x200&set=set3" class="prof-pic">
-            </div>
+            <!-- </div> -->
           </div>
           <div class="col-xs-9">
             <h1>{{ user.username }}</h1>
@@ -148,6 +144,26 @@
             <div class="panel-heading">
               <h3 id="past-games" class="text-center">Past Games</h3>
             </div>
+            <div class="panel-body">
+              <p id="no-past-games">You have no past games</p>
+              <ul id="past-games-list" class="list-group dark"></ul>
+              <button id="view-more-past-games" class="btn btn-success btn-block" data-toggle="modal" data-target="#more-past-games-modal">View More</button>
+              <div id="more-past-games-modal" class="modal fade" role="dialog">
+                <div class="modal-dialog">
+                  <!-- Modal content-->
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <button type="button" class="close" data-dismiss="modal">&times;</button>
+                      <h4 class="modal-title">Past Games</h4>
+                    </div>
+                    <div class="modal-body">
+                      <ul class="list-group dark" id="all-past-games-list" style="height: 400px; overflow: hidden; overflow-y: scroll;"></ul>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="col-md-6">
@@ -165,18 +181,8 @@
               <h3 id="friends" class="text-center">Friends</h3>
             </div>
             <div class="panel-body">
-              {% if friends == [] %}
-              <p>You have no friends :/</p>
-              {% else %}
-              <ul class="list-group dark">
-                {% for f_user in friends %}
-                <li class="list-group-item dark">
-                  <a href="/user/{{ f_user.username }}">{{ f_user.username }}</a> <span class="badge">{{ f_user.elo }}</span>
-                  <!-- <button style="float:right; margin-top: -0.33em;" class="btn btn-sm btn-danger" onclick='remove_friend({{ f_user.username|tojson }})'>Remove</button> -->
-                </li>
-                {% endfor %}
-              </ul>
-              {% endif %}
+              <p id="no-friends">You have no friends :/</p>
+              <ul id="friends-list" class="list-group dark"></ul>
               <!-- <script>
                 function remove_friend(f_username) {
                   $.ajax({
@@ -342,6 +348,52 @@
       get_friend_requests();
     })
 
+    function get_friends() {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'get_friends',
+          'username': {{ user.username|tojson }},
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          console.log(response);
+          if (response.length == 0) {
+            document.getElementById('no-friends').style.display = 'block';
+            document.getElementById('friends-list').style.display = 'none';
+          } else {
+            document.getElementById('no-friends').style.display = 'none';
+            document.getElementById('friends-list').style.display = 'block';
+            document.getElementById('friends-list').innerHTML = '';
+            for (let i = 0; i < response.length; i++) {
+              let li = document.createElement('li');
+              li.classList.add('list-group-item', 'dark');
+              let a = document.createElement('a');
+              a.href = "/user/" + response[i][0];
+              a.innerHTML = response[i][0];
+              let elo = document.createElement('span');
+              elo.classList.add('badge');
+              elo.innerHTML = response[i][1];
+              li.appendChild(a);
+              li.appendChild(elo);
+              document.getElementById('friends-list').appendChild(li);
+            }
+          }
+        },
+        error: function(error) {
+          console.log(error.responseText);
+        },
+      });
+    }
+
+    get_friends();
+    socket.on('update friends', function() {
+      get_friends();
+    })
+
+
+
 
     function accept_challenge(c_username) {
       $.ajax({
@@ -490,8 +542,70 @@
     });
 
     function get_past_games() {
+      $.ajax({
+        url: '/user_access',
+        data: {
+          'method': 'get_past_games',
+          'username': {{ user.username|tojson }},
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          if (response.length == 0) {
+            document.getElementById('no-past-games').style.display = 'block';
+            document.getElementById('past-games-list').style.display = 'none';
+            document.getElementById('view-more-past-games').style.display = 'none';
+          } else {
+            document.getElementById('no-past-games').style.display = 'none';
+            document.getElementById('past-games-list').style.display = 'block';
+            document.getElementById('view-more-past-games').style.display = 'block';
+            document.getElementById('past-games-list').innerHTML = '';
 
+            for (let i = 0; i < response.length; i++) {
+              let li1 = document.createElement('li');
+              li1.classList.add('list-group-item', 'dark');
+              let a = document.createElement('a');
+              a.href = "/user/" + response[i][0];
+              a.innerHTML = response[i][0];
+              let review = document.createElement('button');
+              review.classList.add('btn', 'btn-sm', 'btn-success', 'li-btn');
+              review.onclick = function() {
+                location.href = "/game/" + response[i][1];
+              }
+              review.innerHTML = "Review";
+              li1.appendChild(document.createTextNode(response[i][2] == '{{ user.username }}' ? "(W) " : "(L) "));
+              li1.appendChild(a);
+              li1.appendChild(document.createTextNode(' (game #' + (response[i][1] + ')')));
+              li1.appendChild(review);
+
+              if (i < 5) {
+                li2 = li1.cloneNode();
+                li2.appendChild(document.createTextNode(response[i][2] == '{{ user.username }}' ? "(W) " : "(L) "));
+                li2.appendChild(a.cloneNode(true));
+                li2.appendChild(document.createTextNode(' (game #' + (response[i][1] + ')')));
+                let review2 = review.cloneNode(true);
+                review2.onclick = function() {
+                  location.href = "/game/" + response[i][1];
+                }
+                li2.appendChild(review2);
+                document.getElementById('past-games-list').appendChild(li2);
+              }
+              document.getElementById('all-past-games-list').appendChild(li1);
+            }
+          }
+        },
+        error: function(error) {
+          console.error(error.responseText);
+        },
+      });
     }
+
+    get_past_games();
+    socket.on('update past games', function() {
+      get_past_games();
+    })
+
+
 
 
   </script>

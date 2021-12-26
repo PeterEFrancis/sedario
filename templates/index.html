@@ -73,13 +73,7 @@
               <h3 class="text-center">Top Players</h3>
             </div>
             <div class="panel-body">
-              <ul class="list-group dark">
-                {% for rank, username, elo in top_10 %}
-                <li class="list-group-item dark">
-                  {{ rank }}.&emsp; <a href="/user/{{username}}">{{ username }}</a> <span class="badge">{{ elo }}</span>
-                </li>
-                {% endfor %}
-              </ul>
+              <ul id="top-10" class="list-group dark"></ul>
             </div>
           </div>
         </div>
@@ -89,4 +83,39 @@
     {{ footer|safe }}
 
   </body>
+
+
+  <script>
+
+    function get_top_10() {
+      $.ajax({
+        url: '/sys_access',
+        data: {
+          'method': 'get_top_10'
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+          console.log(response);
+          document.getElementById('top-10').innerHTML = '';
+          for (let i = 0; i < response.length; i++) {
+            let li = document.createElement('li');
+            li.classList.add('list-group-item', 'dark')
+            li.innerHTML = response[i][0] + '.&emsp; <a href="/user/' + response[i][1] + '">' + response[i][1] + '</a> <span class="badge">' + response[i][2] + '</span>';
+            document.getElementById('top-10').appendChild(li);
+          }
+        },
+        error: function(error) {
+          console.error(error.responseText);
+        },
+      });
+    }
+
+    get_top_10()
+    socket.on('update top 10', function() {
+      get_top_10();
+    })
+
+  </script>
+
 </html>

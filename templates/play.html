@@ -115,10 +115,12 @@
                         recents_dom.removeChild(recents_dom.lastChild);
                       }
                       for (let i = 0; i < recents.length; i++) {
-                        let option = document.createElement('option');
-                        option.value = recents[i][0];
-                        option.innerHTML = recents[i][0] + " (" + recents[i][1] + " min ago)";
-                        recents_dom.appendChild(option);
+                        if (recents[i][0] != '{{ username }}') {
+                          let option = document.createElement('option');
+                          option.value = recents[i][0];
+                          option.innerHTML = recents[i][0] + " (" + recents[i][1] + " min ago)";
+                          recents_dom.appendChild(option);
+                        }
                       }
                     }
                   },

@@ -95,9 +95,9 @@ input {
 }
 
 .alert {
-  color: var(--light);
-  margin-top: 5px;
-  margin-bottom: 5px;
+  color: white;
+  margin-top: 10px;
+  margin-bottom: 10px;
   background-color: var(--orange);
 }
 
@@ -106,4 +106,12 @@ input {
   float:right;
   margin-top: -0.33em;
   margin-right: 10px;
+}
+
+
+.prof-pic {
+  max-width: 100%;
+  background-color: white;
+  border-radius: 50%;
+  width: 200px;
 }

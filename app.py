@@ -217,7 +217,7 @@ def elo(ra, rb, sa, sb, na, nb):
     qb = 10 ** int(rb / 400)
     ea = qa / (qa + qb)
     eb = qb / (qa + qb)
-    return (int(ra + get_k(na) * (sa - ea)), int(rb + get_k(b) * (sb - eb)))
+    return (int(ra + get_k(na) * (sa - ea)), int(rb + get_k(nb) * (sb - eb)))
 
 
 
@@ -246,13 +246,16 @@ class Game(db.Model):
         self.state = 'p'
         self.type = type
         self.rated = rated
-        self.combo_moves = '[]' # 3, 60
+        self.combo_moves = '[]'
 
     def make_move(self, move):
         self.combo_moves = str(eval(self.combo_moves) + [move])
         self.redo_stack = '[]'
         db.session.commit()
 
+    def get_winner(self):
+        # even number of moves => black last to move => black wins
+        return [self.black, self.white][len(eval(self.combo_moves)) % 2]
 
 
 def get_game(gameid):
@@ -328,7 +331,7 @@ def index():
         'index.html',
         account_bar=get_account_bar(),
         footer=get_footer(),
-        top_10=eval(get_SysData().top_10),
+        # top_10=eval(get_SysData().top_10),
         logged_in=get_session_user()[0]
     )
 
@@ -351,13 +354,12 @@ def user(username):
     logged_in, s_user = get_session_user()
     # owned account
     if logged_in and s_user.username == username:
-        print(get_games_from_list(eval(user.current_games)))
         return render_template(
             'self_user.html',
             account_bar = get_account_bar(),
             footer = get_footer(),
             user = user,
-            friends = get_users_from_list(eval(user.friends)),
+            # friends = get_users_from_list(eval(user.friends))
             # friend_requests = eval(user.friend_requests),
             # challenges = eval(user.challenges),
             # current_games = [(g.black if g.white == s_user.username else g.white, g.id) for g in get_games_from_list(eval(user.current_games))]
@@ -449,16 +451,12 @@ def signup():
 
 @app.route('/sys_access', methods=['POST'])
 def sys_access():
-    logged_in, s_user = get_session_user()
-    if not logged_in:
-        return 'Access Denied: You are not logged in', 401
 
     method = request.form['method']
     if method == "recent_players":
-        recents = get_recent_and_public_users()
-        print([el for el in recents if el[0] != s_user.username])
-        return jsonify([el for el in recents if el[0] != s_user.username]), 200
-
+        return jsonify(get_recent_and_public_users()), 200
+    if method == "get_top_10":
+        return jsonify(eval(get_SysData().top_10))
 
     return "The method you are trying to access doesn't exist", 403
 
@@ -510,6 +508,7 @@ def user_access():
             'add': 0,
             'link': f'/user/{a_user.username}#friends'
         }, room="user-" + a_user.username)
+        socketio.emit('update friends', room='user-'+a_user.username)
         return 'accept_friend_request successful', 200
     if method == 'deny_friend_request':
         d_username = request.form['d_username']
@@ -565,10 +564,20 @@ def user_access():
 
     if method == 'get_friend_requests':
         return jsonify(eval(user.friend_requests)), 200
+    if method == 'get_friends':
+        return jsonify([[u.username, u.elo] for u in get_users_from_list(eval(user.friends))]), 200
     if method == 'get_challenges':
         return jsonify(eval(user.challenges)), 200
     if method == 'get_current_games':
-        return jsonify([(g.black if g.white == s_user.username else g.white, g.id) for g in get_games_from_list(eval(user.current_games))])
+        return jsonify([[g.black if g.white == s_user.username else g.white, g.id] for g in get_games_from_list(eval(user.current_games))])
+    if method == 'get_past_games':
+        past = [[
+            g.black if g.white == s_user.username else g.white, # opponent
+            g.id,
+            g.get_winner()
+        ] for g in get_games_from_list(eval(user.past_games))]
+        past.sort(key = lambda x: -x[1])
+        return jsonify(past)
 
     return 'Access Denied: The method you are trying to access does not exist', 403
 
@@ -586,7 +595,6 @@ def game_access():
     is_game, game = get_game(game_id)
     if not is_game:
         return "no such game", 403
-
     if not s_user.has_game(game_id):
         return "you don't have access to this game", 403
 
@@ -608,7 +616,10 @@ def game_access():
                 bs = 1 - ws
                 white.elo, black.elo = elo(white.elo, black.elo, ws, bs, len(eval(white.past_games)), len(eval(white.past_games)))
                 set_user_ranks()
+                socketio.emit('update top 10')
             db.session.commit()
+            socketio.emit('update past games', room='user-'+game.white)
+            socketio.emit('update past games', room='user-'+game.black)
         return 'move success', 200
 
 
