@@ -169,6 +169,28 @@
             <div class="panel-heading">
               <h3 class="text-center">Pass and Play</h3>
             </div>
+            <div class="panel-body">
+              <button class="btn btn-success btn-block" onclick="start_pass_and_play()">Play!</button>
+            </div>
+            <script>
+              function start_pass_and_play() {
+                $.ajax({
+                  url: '/user_access',
+                  data: {
+                    'method': 'start_pass_and_play',
+                    'username': {{ s_user.username|tojson }},
+                  },
+                  type: 'POST',
+                  cache: false,
+                  success: function(response) {
+                    location.href = '/game/' + response;
+                  },
+                  error: function(error) {
+                    console.error(error.responseText);
+                  },
+                });
+              }
+            </script>
           </div>
         </div>
       </div>

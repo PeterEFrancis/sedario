@@ -70,7 +70,7 @@
 
     var s, vs;
 
-    function set_screen_p(combo_moves) {
+    function set_screen(combo_moves) {
       s = new State(8);
       s.set_from_combo_moves(combo_moves);
       vs = new ViewState(s, {% if game.white == user.username %}WHITE{% else %}BLACK{% endif %});
@@ -85,7 +85,7 @@
         $.ajax({
           url: '/game_access',
           data: {
-            'method': 'move',
+            'method': 'move_h',
             'id':'{{ game.id }}',
             'square': sq,
             'game_over': s.possible_moves.length == 0
@@ -95,7 +95,7 @@
           success: function(response) {
             // if this player didn't move last
             if (vs.is_current_player()) {
-              update_p();
+              update();
             }
           },
           error: function(error){
@@ -106,7 +106,7 @@
     }
 
 
-    function update_p() {
+    function update() {
       $.ajax({
         url: '/game_access',
         data: {
@@ -118,7 +118,7 @@
         success: function(response) {
           // if not the first time, or different
           if (!s || response.length != s.moves[WHITE].length + s.moves[BLACK].length) {
-            set_screen_p(response);
+            set_screen(response);
           }
           // game over, show modal
           if (s.possible_moves.length == 0) {
@@ -138,10 +138,10 @@
     // join game
     socket.emit('join game', {id:'{{ game.id }}'});
 
-    update_p();
+    update();
     // changes to board play
     socket.on('update game p', function(msg) {
-      update_p();
+      update();
     });
 
 

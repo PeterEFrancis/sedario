@@ -248,9 +248,9 @@ class ViewState {
         (!t.one_sided || t.one_sided == t.state.current_player)
       ) {
         t.state.move_to(sq);
-        t.update_display();
         t.click_handler(sq);
-        t.hover_loc = null;
+        t.hover_sq = null;
+        t.update_display();
       }
     });
 

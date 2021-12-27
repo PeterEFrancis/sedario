@@ -223,7 +223,8 @@ def elo(ra, rb, sa, sb, na, nb):
 
 # game types
 #  - h (human v human)
-#  -
+#  - p (pass and play)
+
 
 # game states
 # - p (playing)
@@ -238,6 +239,11 @@ class Game(db.Model):
     state = db.Column(db.Text)
     rated = db.Column(db.Boolean)
     combo_moves = db.Column(db.Text)
+
+    # for review
+    # L = db.Column(db.Integer)
+    # tree = db.Column(db.Text)
+
 
 
     def __init__(self, white, black, type, rated):
@@ -411,14 +417,28 @@ def game(gameid):
         return error_page(404)
     if not s_user.has_game(game.id):
         return error_page(403)
-    return render_template(
-        'game.html',
-        user = s_user,
-        opponent = game.get_opponent(s_user.username),
-        account_bar = get_account_bar(),
-        footer = get_footer(),
-        game = game
-    )
+
+    if game.state == 'r':
+        return redirect(f'/game/{gameid}')
+
+    if game.type == 'h':
+        return render_template(
+            'game.html',
+            user = s_user,
+            opponent = game.get_opponent(s_user.username),
+            account_bar = get_account_bar(),
+            footer = get_footer(),
+            game = game
+        )
+    if game.type == 'p':
+        return render_template(
+            'pass_and_play.html',
+            user = s_user,
+            account_bar = get_account_bar(),
+            footer = get_footer(),
+            game = game
+        )
+
 
 
 @app.route('/review/<int:gameid>')
@@ -438,7 +458,6 @@ def review(gameid):
         footer = get_footer(),
         game = game
     )
-
 
 
 
@@ -594,6 +613,14 @@ def user_access():
         c_username = request.form['c_username']
         user.remove_challenge(c_username)
         return 'deny_challenge successful', 200
+    if method == 'start_pass_and_play':
+        game = Game(user.username, user.username, 'p', False)
+        db.session.add(game)
+        db.session.commit()
+        user.add_game(game.id)
+        db.session.commit()
+        socketio.emit('update current games', room='user-'+user.username)
+        return str(game.id), 200
 
     if method == 'get_friend_requests':
         return jsonify(eval(user.friend_requests)), 200
@@ -605,7 +632,7 @@ def user_access():
         return jsonify([[g.black if g.white == s_user.username else g.white, g.id] for g in get_games_from_list(eval(user.current_games))])
     if method == 'get_past_games':
         past = [[
-            g.black if g.white == s_user.username else g.white, # opponent
+            g.get_opponent(s_user.username),
             g.id,
             g.get_winner()
         ] for g in get_games_from_list(eval(user.past_games))]
@@ -632,7 +659,7 @@ def game_access():
     method = request.form['method']
     if method == 'get':
         return jsonify(eval(game.combo_moves)), 200
-    if method == 'move':
+    if method == 'move_h':
         game.make_move(int(request.form['square']))
         socketio.emit('update game p', room=f'game-{game_id}')
         if request.form['game_over'] == "true":
@@ -652,7 +679,11 @@ def game_access():
             socketio.emit('update past games', room='user-'+game.white)
             socketio.emit('update past games', room='user-'+game.black)
         return 'move success', 200
-
+    if method == 'move_p':
+        game.make_move(int(request.form['square']))
+        if request.form['game_over'] == "true":
+            game.state = 'r'
+        return 'move success', 200
 
     return "The method you are trying to access doesn't exist", 403
 
