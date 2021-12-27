@@ -81,9 +81,15 @@ br {
 
 
 a {
-  color: var(--light) !important;
+  color: var(--light);
   cursor: pointer;
   text-decoration: underline;
+}
+
+a:hover, a:active {
+  color: var(--white);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--light);
 }
 
 .soft {

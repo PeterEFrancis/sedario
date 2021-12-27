@@ -24,23 +24,8 @@
       <div class="row">
         <div class="col-lg-12">
           <div class="panel dark">
-            <div class="panel-body text-center" id="canvas-container"></div>
-            <div class="panel dark" id="game-over" style="display: none; position: absolute; top: calc(50% - 95px); left: calc(50% - 145px); opacity: 0; transition: 2s; box-shadow: 0px 0px 40px 5px black">
-                <div class="panel-heading">
-                  <h3 class="text-center" id="result"></h3>
-                </div>
-                <div class="panel-body">
-                  <div class="row" style="margin-top: 10px;">
-                    <div class="col-xs-6 text-center">
-                      <button class="btn btn-lg btn-success" style="font-size: 1.5em;" onclick="rematch()">Rematch</button>
-                    </div>
-                    <div class="col-xs-6 text-center">
-                      <button class="btn btn-lg btn-info" style="font-size: 1.5em;" onclick="location.href='/review/{{ game.id }}'">Review</button>
-                    </div>
-                  </div>
-                  <p id="rematch-feedback" style="margin-top: 15px; margin-bottom: 0px;"></p>
-                </div>
-              </div>
+            <div class="panel-body text-center" id="canvas-container">
+            </div>
           </div>
         </div>
       </div>
@@ -48,7 +33,7 @@
         <div class="col-md-12">
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center" style="margin:10px;">
+              <h3 class="text-center">
                 <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span>
                 - vs -
                 <span style="background-color: black; padding: 5px; border-radius: 5px;">{{ game.black }}</span>
@@ -59,7 +44,6 @@
       </div>
 
     </div>
-
 
     {{ footer|safe }}
 
@@ -93,10 +77,7 @@
           type: 'POST',
           cache: false,
           success: function(response) {
-            // if this player didn't move last
-            if (vs.is_current_player()) {
-              update_p();
-            }
+            update_p();
           },
           error: function(error){
             console.error(error.responseText);
@@ -116,16 +97,9 @@
         type: 'POST',
         cache: false,
         success: function(response) {
-          // if not the first time, or different
-          if (!s || response.length != s.moves[WHITE].length + s.moves[BLACK].length) {
+          // if different
+          if (response.length != s.moves[WHITE].length + s.moves[BLACK].length) {
             set_screen_p(response);
-          }
-          // game over, show modal
-          if (s.possible_moves.length == 0) {
-            vs.sheen(1.5);
-            document.getElementById('result').innerHTML = vs.is_current_player() ? "You Lose :(" : "You Win!";
-            document.getElementById('game-over').style.display = "block";
-            document.getElementById('game-over').style.opacity = 1;
           }
         },
         error: function(error){
@@ -134,38 +108,19 @@
       });
     }
 
-
     // join game
     socket.emit('join game', {id:'{{ game.id }}'});
 
-    update_p();
+    set_screen_p(JSON.parse({{ game.combo_moves|tojson }}));
     // changes to board play
     socket.on('update game p', function(msg) {
       update_p();
     });
 
-
-    function rematch() {
-      $.ajax({
-        url: '/user_access',
-        data: {
-          'method': 'challenge',
-          'username': {{ user.username|tojson }},
-          'c_username': {{ opponent|tojson }},
-          'rated': {{game.rated|tojson}}
-        },
-        type: 'POST',
-        cache: false,
-        success: function(response) {
-          document.getElementById('rematch-feedback').innerHTML = 'Challenge successful!';
-        },
-        error: function(error) {
-          document.getElementById('rematch-feedback').innerHTML = error.responseText;
-          console.error(error.responseText);
-        },
-      });
-    }
-
+    // changes to board review
+    socket.on('update game r', function(msg) {
+      update_p();
+    });
 
 
   </script>

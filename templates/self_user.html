@@ -157,7 +157,7 @@
                       <h4 class="modal-title">Past Games</h4>
                     </div>
                     <div class="modal-body">
-                      <ul class="list-group dark" id="all-past-games-list" style="height: 400px; overflow: hidden; overflow-y: scroll;"></ul>
+                      <ul class="list-group dark" id="all-past-games-list" style="max-height: 400px; overflow: hidden; overflow-y: scroll;"></ul>
                     </div>
                   </div>
 
@@ -358,7 +358,6 @@
         type: 'POST',
         cache: false,
         success: function(response) {
-          console.log(response);
           if (response.length == 0) {
             document.getElementById('no-friends').style.display = 'block';
             document.getElementById('friends-list').style.display = 'none';

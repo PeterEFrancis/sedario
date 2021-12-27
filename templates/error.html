@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Sedario | 404 Error</title>
+    <title>Sedario | {{ num }} Error</title>
     <link rel="shortcut icon" type="image/ico" href="/static/img/favicon.ico"/>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,8 +17,8 @@
 
     <div class="container">
       <div class="jumbotron dark" style="margin-top: 50px">
-        <h1>404</h1>
-        <p>The page you're looking for doesn't exist.</p>
+        <h1>{{ num }}</h1>
+        <p>{{ msg }}</p>
       </div>
     </div>
 

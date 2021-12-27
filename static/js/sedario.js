@@ -261,12 +261,16 @@ class ViewState {
       } else {
         t.hover_sq = null;
       }
-      t.update_display();
+      if (t.state.possible_moves.length > 0) {
+        t.update_display();
+      }
     });
 
     this.canvas.addEventListener('mouseout', function(evt) {
       t.hover_sq = null;
-      t.update_display();
+      if (t.state.possible_moves.length > 0) {
+        t.update_display();
+      }
     });
 
     this.ctx = this.canvas.getContext('2d');
@@ -412,11 +416,19 @@ class ViewState {
     if (this.state.possible_moves.length === 0) {
       let crown = new Image();
       const t = this;
-      crown.onload = function() {
-        let loc = t._get_loc_from_sq(get_last(t.state.moves[t.state._opponent()]));
-        t.ctx.drawImage(crown, loc.x - SQUARE / 3.3, loc.y - SQUARE / 3, 60, 60);
-      };
-      crown.src = "/static/img/crown.png";
+      const loc = this._get_loc_from_sq(get_last(this.state.moves[this.state._opponent()]));
+      this.ctx.fillStyle = "yellow";
+      this.ctx.strokeStyle = "black";
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(loc.x-29, loc.y-15);
+      let points = [[-25, 18], [25, 18], [29, -15], [14, 1], [0, -15], [-14, 1]];
+      for (let i = 0; i < points.length; i++) {
+        this.ctx.lineTo(loc.x + points[i][0], loc.y + points[i][1]);
+      }
+      this.ctx.closePath();
+      this.ctx.fill();
+      this.ctx.stroke();
     } else if (!this.one_sided || this.one_sided == this.state.current_player) {
       // red dot
       this.ctx.fillStyle = 'red';
@@ -430,9 +442,25 @@ class ViewState {
 
   }
 
+  sheen(sec) {
+    this.ctx.fillStyle = "rgba(0,0,0,0.01)";
+    const t = this;
+    var i = 0;
+    const int = setInterval(function() {
+      t.ctx.fillRect(0, 0, t.canvas.width, t.canvas.height);
+      i += 1;
+      if (i == 100) {
+        clearInterval(int);
+      }
+    }, sec * 1000 / 100);
+  }
+
   get_DOM() {
     return this.canvas;
   }
 
+  is_current_player() {
+    return this.one_sided && (this.one_sided == this.state.current_player);
+  }
 
 }

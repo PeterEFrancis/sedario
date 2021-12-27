@@ -257,6 +257,13 @@ class Game(db.Model):
         # even number of moves => black last to move => black wins
         return [self.black, self.white][len(eval(self.combo_moves)) % 2]
 
+    def get_opponent(self, player):
+        if self.black == player:
+            return self.white
+        elif self.white == player:
+            return self.black
+        return None
+
 
 def get_game(gameid):
     games = db.session.query(Game).filter(Game.id == gameid)
@@ -315,12 +322,20 @@ def get_account_bar():
 def get_footer():
     return render_template('footer.html')
 
-def _404():
+def error_page(num):
     return render_template(
-        '404.html',
-        account_bar=get_account_bar(),
-        footer=get_footer()
+        'error.html',
+        account_bar = get_account_bar(),
+        footer = get_footer(),
+        num = num,
+        msg = {
+            401: "You must be logged in to view this page.",
+            403: "You don't have access to this page.",
+            404: "The page you're looking for doesn't exist."
+        }[num]
     )
+
+
 
 
 
@@ -331,7 +346,6 @@ def index():
         'index.html',
         account_bar=get_account_bar(),
         footer=get_footer(),
-        # top_10=eval(get_SysData().top_10),
         logged_in=get_session_user()[0]
     )
 
@@ -350,7 +364,7 @@ def all():
 def user(username):
     is_user, user = get_user(username)
     if not is_user:
-        return _404()
+        return error_page(404)
     logged_in, s_user = get_session_user()
     # owned account
     if logged_in and s_user.username == username:
@@ -358,11 +372,7 @@ def user(username):
             'self_user.html',
             account_bar = get_account_bar(),
             footer = get_footer(),
-            user = user,
-            # friends = get_users_from_list(eval(user.friends))
-            # friend_requests = eval(user.friend_requests),
-            # challenges = eval(user.challenges),
-            # current_games = [(g.black if g.white == s_user.username else g.white, g.id) for g in get_games_from_list(eval(user.current_games))]
+            user = user
         )
     # other person's account
     return render_template(
@@ -380,8 +390,7 @@ def user(username):
 def play():
     logged_in, s_user = get_session_user()
     if not logged_in:
-        return redirect('/')
-    print(get_recent_and_public_users())
+        return error_page(401)
     return render_template(
         'play.html',
         account_bar = get_account_bar(),
@@ -392,21 +401,44 @@ def play():
     )
 
 
-@app.route('/game/<string:gameid>')
+@app.route('/game/<int:gameid>')
 def game(gameid):
     logged_in, s_user = get_session_user()
     if not logged_in:
-        return redirect('/')
+        return error_page(401)
     is_game, game = get_game(gameid)
     if not is_game:
-        return _404()
+        return error_page(404)
+    if not s_user.has_game(game.id):
+        return error_page(403)
     return render_template(
         'game.html',
+        user = s_user,
+        opponent = game.get_opponent(s_user.username),
+        account_bar = get_account_bar(),
+        footer = get_footer(),
+        game = game
+    )
+
+
+@app.route('/review/<int:gameid>')
+def review(gameid):
+    logged_in, s_user = get_session_user()
+    if not logged_in:
+        return error_page(401)
+    is_game, game = get_game(gameid)
+    if not is_game:
+        return error_page(404)
+    if not s_user.has_game(game.id):
+        return error_page(403)
+    return render_template(
+        'review.html',
         user = s_user,
         account_bar = get_account_bar(),
         footer = get_footer(),
         game = game
     )
+
 
 
 
@@ -449,6 +481,8 @@ def signup():
     return 'Signup successful', 200
 
 
+
+
 @app.route('/sys_access', methods=['POST'])
 def sys_access():
 
@@ -459,7 +493,6 @@ def sys_access():
         return jsonify(eval(get_SysData().top_10))
 
     return "The method you are trying to access doesn't exist", 403
-
 
 
 @app.route('/user_access', methods=['POST'])
@@ -550,7 +583,7 @@ def user_access():
         c_user.add_game(game.id)
         db.session.commit()
         socketio.emit('alert', {
-            'msg': f"{user.username} accepted your challenge. Click <a href='/game/{game.id}'>here</a> to play!",
+            'msg': f"{user.username} accepted your challenge.",
             'add': 0,
             'link': f'/game/{game.id}'
         }, room='user-' + c_user.username)
@@ -580,8 +613,6 @@ def user_access():
         return jsonify(past)
 
     return 'Access Denied: The method you are trying to access does not exist', 403
-
-
 
 
 @app.route('/game_access', methods=['POST'])

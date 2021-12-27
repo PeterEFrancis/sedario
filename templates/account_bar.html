@@ -12,24 +12,25 @@
 
   socket.on('alert', function(data) {
     let alert_block = document.createElement('div');
+    alert_block.style.zIndex = 999;
     alert_block.classList.add('alert', 'alert-dismissible', 'fade', 'in');
-    if (data['link']) {
-      alert_block.onclick = function() {
-        location.href = data['link'];
-      }
-      alert_block.style.cursor = "pointer";
-    }
     let a = document.createElement('a');
     a.href="#";
     a.classList.add("close");
     a.setAttribute("data-dismiss", "alert");
     a.setAttribute("aria-label", "close");
+    a.style.color = "white";
     a.innerHTML = "&times";
     a.style.textDecoration = "none";
     alert_block.appendChild(a);
     alert_block.innerHTML += data['msg'];
+    if (data['link']) {
+      alert_block.innerHTML += " Click <a href='" + data['link'] + "'>here</a> to view.";
+    }
+
     let cont = document.getElementById('account-bar-container');
     cont.insertBefore(alert_block, cont.firstChild);
+
     let num = document.getElementById('num-alerts');
     let n = Number(num.innerHTML || 0) + data['add'];
     if (n != 0) {
