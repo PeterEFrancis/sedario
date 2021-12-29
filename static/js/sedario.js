@@ -107,6 +107,7 @@ class State {
     this.arrow = [];
     this.possible_moves = [];
     this.undo_stack = [];
+    this._find_possible_moves();
   }
 
   _opponent() {
@@ -578,21 +579,25 @@ function min_child(state, func) {
     find the child state whose func is the lowest
   */
   let val = Infinity;
-  let move = null;
-  let child = null;
+  let moves = [];
+  let children = [];
   for (let i in state.possible_moves) {
     let c = state.clone();
     c.move_to(state.possible_moves[i]);
     let f = func(c);
     if (f < val) {
       val = f;
-      move = state.possible_moves[i];
-      child = c;
+      moves = [state.possible_moves[i]];
+      children = [c];
+    } else if (f == val) {
+      moves.push(state.possible_moves[i]);
+      children.push(c);
     }
   }
+  let i = Math.floor(Math.random() *  moves.length);
   return {
-    move: move,
-    child: child,
+    move: moves[i],
+    child: children[i],
     val: val
   };
 }
@@ -708,14 +713,14 @@ function comp_find_losing_moves(state) {
 
 const COMP_STRATEGIES = {
 
-  comp_first_move: function(state) {
-    return state.possible_moves[0];
-  },
-
   comp_random_move: function(state) {
     return state.possible_moves[
       Math.floor(Math.random() * state.possible_moves.length)
     ];
+  },
+
+  comp_first_move: function(state) {
+    return state.possible_moves[0];
   },
 
   comp_min_opp_mobility: function(state) {
@@ -730,4 +735,30 @@ const COMP_STRATEGIES = {
     return comp_find_winning_move(state) || min_max(state, alpha).move;
   }
 
+}
+
+
+
+
+
+
+
+//   __        __   _  __        __         _
+//   \ \      / /__| |_\ \      / /__  _ __| | _____ _ __
+//    \ \ /\ / / _ \ '_ \ \ /\ / / _ \| '__| |/ / _ \ '__|
+//     \ V  V /  __/ |_) \ V  V / (_) | |  |   <  __/ |
+//      \_/\_/ \___|_.__/ \_/\_/ \___/|_|  |_|\_\___|_|
+
+
+function play_game(white, black, n) {
+  let s = new State(n);
+  while (!s.is_game_over()) {
+    let sq = COMP_STRATEGIES[s.current_player == WHITE ? white : black](s);
+    s.move_to(sq);
+  }
+  return s._opponent();
+}
+
+this.onmessage = function(e) {
+  postMessage(play_game(...e.data));
 }

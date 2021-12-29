@@ -81,7 +81,6 @@
       cont.appendChild(vs.get_DOM());
       vs.update_display();
       vs.click_handler = function(sq) {
-        s._find_possible_moves();
         $.ajax({
           url: '/game_access',
           data: {

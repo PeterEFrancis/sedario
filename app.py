@@ -435,7 +435,7 @@ def game(gameid):
         return error_page(404)
     if not s_user.has_game(game.id):
         return error_page(403)
-    # 
+
     # if game.state == 'r':
     #     return redirect(f'/review/{gameid}')
 
@@ -485,6 +485,17 @@ def review(gameid):
         footer = get_footer(),
         game = game
     )
+
+
+
+@app.route('/AI')
+def AI_test():
+    return render_template(
+        'AI_test.html',
+        account_bar = get_account_bar(),
+        footer = get_footer()
+    )
+
 
 
 
