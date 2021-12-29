@@ -11,6 +11,8 @@
 
     <link rel="stylesheet" href="/static/css/style.css">
 
+    <script src="../static/js/sedario.js" type="text/javascript"></script>
+
 
   </head>
   <body>
@@ -51,29 +53,29 @@
               <button class="btn btn-success btn-block" onclick="challenge_friend()">Challenge!</button>
               <p id="challenge-feedback" style="margin-top: 1em;"></p>
               <script>
-              function challenge_friend() {
-                let sel = document.getElementById('choosen-friend');
-                let c_username = sel.options[sel.selectedIndex].value;
-                let rated = document.getElementById('rated').checked;
-                $.ajax({
-                  url: '/user_access',
-                  data: {
-                    'method': 'challenge',
-                    'username': {{ s_user.username|tojson }},
-                    'c_username': c_username,
-                    'rated': rated
-                  },
-                  type: 'POST',
-                  cache: false,
-                  success: function(response) {
-                    document.getElementById('challenge-feedback').innerHTML = 'Challenge successful!';
-                  },
-                  error: function(error) {
-                    document.getElementById('challenge-feedback').innerHTML = error.responseText;
-                    console.error(error.responseText);
-                  },
-                });
-              }
+                function challenge_friend() {
+                  let sel = document.getElementById('choosen-friend');
+                  let c_username = sel.options[sel.selectedIndex].value;
+                  let rated = document.getElementById('rated').checked;
+                  $.ajax({
+                    url: '/user_access',
+                    data: {
+                      'method': 'challenge',
+                      'username': {{ s_user.username|tojson }},
+                      'c_username': c_username,
+                      'rated': rated
+                    },
+                    type: 'POST',
+                    cache: false,
+                    success: function(response) {
+                      document.getElementById('challenge-feedback').innerHTML = 'Challenge successful!';
+                    },
+                    error: function(error) {
+                      document.getElementById('challenge-feedback').innerHTML = error.responseText;
+                      console.error(error.responseText);
+                    },
+                  });
+                }
               </script>
               {% endif %}
             </div>
@@ -94,45 +96,43 @@
               </div>
               <p id="challenge-feedback-2" style="margin-top: 1em;"></p>
               <script>
-
-              function load_recents() {
-                $.ajax({
-                  url: '/sys_access',
-                  data: {
-                    'method': 'recent_players',
-                  },
-                  type: 'POST',
-                  cache: false,
-                  success: function(recents) {
-                    if (recents.length == 0) {
-                      document.getElementById('no-recent-players').style.display = "block";
-                      document.getElementById('recent-form').style.display = "none";
-                    } else {
-                      document.getElementById('no-recent-players').style.display = "none";
-                      document.getElementById('recent-form').style.display = "block";
-                      let recents_dom = document.getElementById('choosen-recent');
-                      while (recents_dom.firstChild) {
-                        recents_dom.removeChild(recents_dom.lastChild);
-                      }
-                      for (let i = 0; i < recents.length; i++) {
-                        if (recents[i][0] != '{{ username }}') {
-                          let option = document.createElement('option');
-                          option.value = recents[i][0];
-                          option.innerHTML = recents[i][0] + " (" + recents[i][1] + " min ago)";
-                          recents_dom.appendChild(option);
+                function load_recents() {
+                  $.ajax({
+                    url: '/sys_access',
+                    data: {
+                      'method': 'recent_players',
+                    },
+                    type: 'POST',
+                    cache: false,
+                    success: function(recents) {
+                      if (recents.length == 0) {
+                        document.getElementById('no-recent-players').style.display = "block";
+                        document.getElementById('recent-form').style.display = "none";
+                      } else {
+                        document.getElementById('no-recent-players').style.display = "none";
+                        document.getElementById('recent-form').style.display = "block";
+                        let recents_dom = document.getElementById('choosen-recent');
+                        while (recents_dom.firstChild) {
+                          recents_dom.removeChild(recents_dom.lastChild);
+                        }
+                        for (let i = 0; i < recents.length; i++) {
+                          if (recents[i][0] != '{{ username }}') {
+                            let option = document.createElement('option');
+                            option.value = recents[i][0];
+                            option.innerHTML = recents[i][0] + " (" + recents[i][1] + " min ago)";
+                            recents_dom.appendChild(option);
+                          }
                         }
                       }
-                    }
-                  },
-                  error: function(error) {
-                    console.error(error.responseText);
-                  },
-                });
-              }
-              load_recents();
-              setInterval(load_recents, 60000);
-
-              function challenge_recent() {
+                    },
+                    error: function(error) {
+                      console.error(error.responseText);
+                    },
+                  });
+                }
+                load_recents();
+                setInterval(load_recents, 60000);
+                function challenge_recent() {
                 let sel = document.getElementById('choosen-recent');
                 let c_username = sel.options[sel.selectedIndex].value;
                 let rated = document.getElementById('rated-2').checked;
@@ -164,6 +164,52 @@
             <div class="panel-heading">
               <h3 class="text-center">Play a Computer</h3>
             </div>
+            <div class=" panel-body">
+              <div class="form-group">
+                <label for="play-as">You play as:</label>
+                <select class="form-control" id="play-as">
+                  <option value="random">Random</option>
+                  <option value="white">White</option>
+                  <option value="black">Black</option>
+                </select>
+                <br>
+                <label for="comp-strategy">Computer Strategy:</label>
+                <select class="form-control" id="comp-strategy"></select>
+                <br>
+                <button class="btn btn-success btn-block" onclick="start_comp_game()">Play!</button>
+                <script>
+
+                  for (let strat in COMP_STRATEGIES) {
+                    let option = document.createElement('option');
+                    option.value = strat;
+                    option.innerHTML = strat;
+                    document.getElementById('comp-strategy').appendChild(option);
+                  }
+
+                  function start_comp_game() {
+                    let play_as = document.getElementById('play-as');
+                    let comp_strategy = document.getElementById('comp-strategy');
+                    $.ajax({
+                      url: '/user_access',
+                      data: {
+                        'method': 'start_comp_game',
+                        'username': {{ s_user.username|tojson }},
+                        'play-as': play_as.options[play_as.selectedIndex].value,
+                        'comp-strategy': comp_strategy.options[comp_strategy.selectedIndex].value
+                      },
+                      type: 'POST',
+                      cache: false,
+                      success: function(response) {
+                        location.href = '/game/' + response;
+                      },
+                      error: function(error) {
+                        console.error(error.responseText);
+                      },
+                    });
+                  }
+                </script>
+              </div>
+            </div>
           </div>
           <div class="panel dark">
             <div class="panel-heading">
@@ -171,26 +217,26 @@
             </div>
             <div class="panel-body">
               <button class="btn btn-success btn-block" onclick="start_pass_and_play()">Play!</button>
+              <script>
+                function start_pass_and_play() {
+                  $.ajax({
+                    url: '/user_access',
+                    data: {
+                      'method': 'start_pass_and_play',
+                      'username': {{ s_user.username|tojson }},
+                    },
+                    type: 'POST',
+                    cache: false,
+                    success: function(response) {
+                      location.href = '/game/' + response;
+                    },
+                    error: function(error) {
+                      console.error(error.responseText);
+                    },
+                  });
+                }
+              </script>
             </div>
-            <script>
-              function start_pass_and_play() {
-                $.ajax({
-                  url: '/user_access',
-                  data: {
-                    'method': 'start_pass_and_play',
-                    'username': {{ s_user.username|tojson }},
-                  },
-                  type: 'POST',
-                  cache: false,
-                  success: function(response) {
-                    location.href = '/game/' + response;
-                  },
-                  error: function(error) {
-                    console.error(error.responseText);
-                  },
-                });
-              }
-            </script>
           </div>
         </div>
       </div>

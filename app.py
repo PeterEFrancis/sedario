@@ -224,6 +224,7 @@ def elo(ra, rb, sa, sb, na, nb):
 # game types
 #  - h (human v human)
 #  - p (pass and play)
+#  - c (human v computer)
 
 
 # game states
@@ -434,9 +435,9 @@ def game(gameid):
         return error_page(404)
     if not s_user.has_game(game.id):
         return error_page(403)
-
-    if game.state == 'r':
-        return redirect(f'/game/{gameid}')
+    # 
+    # if game.state == 'r':
+    #     return redirect(f'/review/{gameid}')
 
     if game.type == 'h':
         return render_template(
@@ -454,6 +455,15 @@ def game(gameid):
             account_bar = get_account_bar(),
             footer = get_footer(),
             game = game
+        )
+    if game.type == 'c':
+        return render_template(
+            'comp.html',
+            user = s_user,
+            account_bar = get_account_bar(),
+            footer = get_footer(),
+            game = game,
+            comp_strategy = game.get_opponent(s_user.username).split('@')[1]
         )
 
 
@@ -519,6 +529,7 @@ def signup():
 
 
 
+
 @app.route('/sys_access', methods=['POST'])
 def sys_access():
 
@@ -542,6 +553,8 @@ def user_access():
         return 'Access Denied: You are not logged in', 401
     if s_user.username != username:
         return "Access Denied: You don't have access to this account", 403
+
+    user.check_in()
 
     method = request.form['method']
     if method == 'save_account_settings':
@@ -638,6 +651,19 @@ def user_access():
         db.session.commit()
         socketio.emit('update current games', room='user-'+user.username)
         return str(game.id), 200
+    if method == 'start_comp_game':
+        white = 'COMP@' + request.form['comp-strategy']
+        black = user.username
+        if ((request.form['play-as'] == 'random') and random.randint(0, 1) or
+            (request.form['play-as'] == 'white')):
+            white, black = black, white
+        game = Game(white, black, 'c', False)
+        db.session.add(game)
+        db.session.commit()
+        user.add_game(game.id)
+        db.session.commit()
+        socketio.emit('update current games', room='user-'+user.username)
+        return str(game.id), 200
 
     if method == 'get_friend_requests':
         return jsonify(eval(user.friend_requests)), 200
@@ -673,6 +699,9 @@ def game_access():
     if not s_user.has_game(game_id):
         return "you don't have access to this game", 403
 
+    s_user.check_in()
+
+
     method = request.form['method']
 
     if method == 'get':
@@ -681,9 +710,8 @@ def game_access():
     if game.type == 'h':
         if method == 'move_h':
             game.make_move(int(request.form['square']))
-            socketio.emit('update game p', room=f'game-{game_id}')
+            socketio.emit('update game', room=f'game-{game_id}')
             if request.form['game_over'] == "true":
-                # game over
                 game.state = 'r'
                 white = get_user(game.white)[1]
                 black = get_user(game.black)[1]
@@ -698,19 +726,32 @@ def game_access():
                 db.session.commit()
                 socketio.emit('update past games', room='user-'+game.white)
                 socketio.emit('update past games', room='user-'+game.black)
-            return 'move success', 200
+            return 'move_h success', 200
     if game.type == 'p':
         if method == 'move_p':
             game.make_move(int(request.form['square']))
             if request.form['game_over'] == "true":
+                s_user.end_game(game.id)
                 game.state = 'r'
+                db.session.commit()
+                socketio.emit('update past games', room='user-'+s_user.username)
+            return 'move_p success', 200
         if method == 'undo_p':
             game.undo()
+            return 'undo_p success', 200
         if method == 'redo_p':
             game.redo()
+            return 'redo_p success', 200
+    if game.type == 'c':
+        if method == 'move_c':
+            game.make_move(int(request.form['square']))
+            if request.form['game_over'] == "true":
+                game.state = 'r'
+                s_user.end_game(game.id)
+                db.session.commit()
+                socketio.emit('update past games', room='user-'+s_user.username)
+            return 'move success', 200
 
-
-        return 'move success', 200
 
 
 

@@ -286,6 +286,10 @@ class State {
     }
   }
 
+  is_game_over() {
+    return this.possible_moves.length == 0;
+  }
+
 }
 
 
@@ -608,7 +612,6 @@ function alpha(state) {
 
 // abstract searches
 
-
 function min_child(state, func) {
   /*
     find the child state whose func is the lowest
@@ -697,29 +700,31 @@ function comp_find_losing_moves(state) {
 
 
 
+
 // fixed methods
 
+const COMP_STRATEGIES = {
 
-function comp_first_move(state) {
-  return state.possible_moves[0];
-}
+  comp_first_move: function(state) {
+    return state.possible_moves[0];
+  },
 
-function comp_random_move(state) {
-  return state.possible_moves[
-    Math.floor(
-      Math.random() * state.possible_moves.length
-    )
-  ];
-}
+  comp_random_move: function(state) {
+    return state.possible_moves[
+      Math.floor(Math.random() * state.possible_moves.length)
+    ];
+  },
 
-function comp_min_opp_mobility(state) {
-  return
-    comp_find_winning_move(state) ||
-    min_child(state, mobility).move;
-}
+  comp_min_opp_mobility: function(state) {
+    return comp_find_winning_move(state) || min_child(state, mobility).move;
+  },
 
-function comp_min_max_play_mobility(state) {
-  return
-    comp_find_winning_move(state) ||
-    min_max(state, mobility).move;
+  comp_min_max_play_mobility: function(state) {
+    return comp_find_winning_move(state) || min_max(state, mobility).move;
+  },
+
+  comp_alpha_min_max: function(state) {
+    return comp_find_winning_move(state) || min_max(state, alpha).move;
+  }
+
 }

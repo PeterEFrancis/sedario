@@ -88,7 +88,7 @@
             'method': 'move_h',
             'id':'{{ game.id }}',
             'square': sq,
-            'game_over': s.possible_moves.length == 0
+            'game_over': s.is_game_over()
           },
           type: 'POST',
           cache: false,
@@ -121,7 +121,7 @@
             set_screen(response);
           }
           // game over, show modal
-          if (s.possible_moves.length == 0) {
+          if (s.is_game_over()) {
             vs.sheen(1.5);
             document.getElementById('result').innerHTML = vs.is_current_player() ? "You Lose :(" : "You Win!";
             document.getElementById('game-over').style.display = "block";
@@ -140,7 +140,7 @@
 
     update();
     // changes to board play
-    socket.on('update game p', function(msg) {
+    socket.on('update game', function(msg) {
       update();
     });
 

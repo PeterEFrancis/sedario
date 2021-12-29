@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
   <head>
-    <title>Sedario | Game: Pass and Play</title>
+    <title>Sedario | Game: Computer</title>
     <link rel="shortcut icon" type="image/ico" href="/static/img/favicon.ico"/>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +14,8 @@
     <link rel="stylesheet" href="/static/css/style.css">
 
 
-    <script src="../static/js/sedario.js"></script>
+    <script src="../static/js/sedario.js" type="text/javascript"></script>
+
   </head>
   <body>
 
@@ -32,7 +33,7 @@
                 <div class="panel-body">
                   <div class="row" style="margin-top: 10px;">
                     <div class="col-xs-6 text-center">
-                      <button class="btn btn-lg btn-success" style="font-size: 1.5em;" onclick="new_game()">New Game</button>
+                      <button class="btn btn-lg btn-success" style="font-size: 1.5em;" onclick="location.href='/play'">New Game</button>
                     </div>
                     <div class="col-xs-6 text-center">
                       <button class="btn btn-lg btn-info" style="font-size: 1.5em;" onclick="location.href='/review/{{ game.id }}'">Review</button>
@@ -45,15 +46,19 @@
         </div>
       </div>
       <div class="row">
-        <div class="col-lg-12">
+        <div class="col-md-12">
           <div class="panel dark">
-            <div class="panel-body text-center">
-              <button id="undo" class="btn btn-lg btn-info" onclick="undo()">Undo</button>
-              <button id="redo" class="btn btn-lg btn-info" onclick="redo()">Redo</button>
+            <div class="panel-heading">
+              <h3 class="text-center" style="margin:10px;">
+                <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span>
+                - vs -
+                <span style="background-color: black; padding: 5px; border-radius: 5px;">{{ game.black }}</span>
+              </h3>
             </div>
           </div>
         </div>
       </div>
+
     </div>
 
 
@@ -64,22 +69,24 @@
 
   <script>
 
+    let this_player = {% if game.white == user.username %}WHITE{% else %}BLACK{% endif %};
     let s = new State(8);
-    let vs = new ViewState(s);
-    vs.state.set_from_combo_moves({{ game.combo_moves }}, {{ game.undo_stack }});
+    let vs = new ViewState(s, this_player);
+    vs.state.set_from_combo_moves({{ game.combo_moves }});
     vs.update_display();
-    set_buttons();
-    end_game();
     let cont = document.getElementById('canvas-container');
     cont.appendChild(vs.get_DOM());
 
-    vs.click_handler = function(sq) {
+    if (!game_over() && this_player != s.current_player) {
+      comp_move();
+    }
+
+    function send_move(sq) {
       s._find_possible_moves();
-      set_buttons();
       $.ajax({
         url: '/game_access',
         data: {
-          'method': 'move_p',
+          'method': 'move_c',
           'id': '{{ game.id }}',
           'square': sq,
           'game_over': s.is_game_over()
@@ -87,7 +94,9 @@
         type: 'POST',
         cache: false,
         success: function(response) {
-          end_game();
+          if (!game_over() && this_player != s.current_player) {
+            comp_move();
+          }
         },
         error: function(error){
           console.error(error.responseText);
@@ -95,84 +104,28 @@
       });
     }
 
-    function end_game() {
+    vs.click_handler = send_move;
+
+    function comp_move() {
+      setTimeout(function() {
+        let sq = {{ comp_strategy }}(s);
+        s.move_to(sq);;
+        vs.update_display();
+        send_move(sq);
+      }, 1000);
+    }
+
+    function game_over() {
       // game over, show modal
       if (s.is_game_over()) {
         vs.sheen(1.5);
         document.getElementById('result').innerHTML = (vs.state.current_player == BLACK ? "White" : "Black") + " Wins!";
         document.getElementById('game-over').style.display = "block";
         document.getElementById('game-over').style.opacity = 1;
+        return true;
       }
+      return false;
     }
-
-
-    function new_game() {
-      $.ajax({
-        url: '/user_access',
-        data: {
-          'method': 'start_pass_and_play',
-          'username': {{ user.username|tojson }},
-        },
-        type: 'POST',
-        cache: false,
-        success: function(response) {
-          location.href = '/game/' + response;
-        },
-        error: function(error) {
-          console.error(error.responseText);
-        },
-      });
-    }
-
-
-    function set_buttons() {
-      document.getElementById('redo').disabled = s.undo_stack.length == 0;
-      document.getElementById('undo').disabled = s.moves[s._opponent()].length == 0;
-    }
-
-
-    function undo() {
-      s.undo();
-      vs.update_display();
-      set_buttons();
-      $.ajax({
-        url: '/game_access',
-        data: {
-          'method': 'undo_p',
-          'id': '{{ game.id }}',
-        },
-        type: 'POST',
-        cache: false,
-        success: function(response) {
-
-        },
-        error: function(error){
-          console.error(error.responseText);
-        }
-      });
-    }
-
-    function redo() {
-      s.redo();
-      vs.update_display();
-      set_buttons();
-      $.ajax({
-        url: '/game_access',
-        data: {
-          'method': 'redo_p',
-          'id':'{{ game.id }}'
-        },
-        type: 'POST',
-        cache: false,
-        success: function(response) {
-
-        },
-        error: function(error){
-          console.error(error.responseText);
-        }
-      });
-    }
-
 
   </script>
 
