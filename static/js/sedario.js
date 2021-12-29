@@ -569,45 +569,6 @@ class ViewState {
 
 
 
-// heuristics
-
-function mobility(state) {
-  // how many moves the player has
-  return state.possible_moves.length;
-}
-
-function domain(state) {
-  // how many squares are in the same connected component
-  let start = get_last(state.moves[state.current_player]) || 0;
-  let stack = [start];
-  let dom = [start];
-  while (stack.length != 0 && stack.length < 100) {
-    let sq = stack.pop();
-    for (let d = 0; d < DIRS.length; d++) {
-      let new_sq = get_slide(sq, d, state.n);
-      if (
-        !dom.includes(new_sq) &&
-        can_slide(sq, d, state.n, state.board, state.arrow)
-      ) {
-        dom.push(new_sq);
-        stack.push(new_sq);
-      }
-    }
-  }
-  return dom.length;
-}
-
-
-
-
-
-// desirability functions
-
-function alpha(state) {
-  return mobility(state) * domain(state) - max_child(state, mobility).val;
-}
-
-
 
 
 // abstract searches
@@ -652,6 +613,48 @@ function min_max(state, func) {
   return max_child(state, function(s) {
     return min_child(s, func).val;
   });
+}
+
+
+
+
+
+// heuristics
+
+function mobility(state) {
+  // how many moves the player has
+  return state.possible_moves.length;
+}
+
+function domain(state) {
+  // how many squares are in the same connected component
+  let start = get_last(state.moves[state.current_player]) || 0;
+  let stack = [start];
+  let dom = [start];
+  while (stack.length != 0 && stack.length < 100) {
+    let sq = stack.pop();
+    for (let d = 0; d < DIRS.length; d++) {
+      let new_sq = get_slide(sq, d, state.n);
+      if (
+        !dom.includes(new_sq) &&
+        can_slide(sq, d, state.n, state.board, state.arrow)
+      ) {
+        dom.push(new_sq);
+        stack.push(new_sq);
+      }
+    }
+  }
+  return dom.length;
+}
+
+
+
+
+
+// desirability functions
+
+function alpha(state) {
+  return mobility(state) * domain(state) - max_child(state, mobility).val;
 }
 
 
