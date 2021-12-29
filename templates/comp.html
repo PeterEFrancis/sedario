@@ -108,7 +108,7 @@
 
     function comp_move() {
       setTimeout(function() {
-        let sq = {{ comp_strategy }}(s);
+        let sq = COMP_STRATEGIES['{{ comp_strategy }}'](s);
         s.move_to(sq);;
         vs.update_display();
         send_move(sq);
