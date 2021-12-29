@@ -2,6 +2,14 @@
 "use strict";
 
 
+//                         _
+//      ___ ___  _ __  ___| |_
+//     / __/ _ \| '_ \/ __| __|
+//    | (_| (_) | | | \__ \ |_
+//     \___\___/|_| |_|___/\__|
+
+
+
 const SQUARE = 100;
 
 const EMPTY = 0;
@@ -9,10 +17,30 @@ const FILLED = 1;
 const WHITE = 2;
 const BLACK = 3;
 const ARROW = 4;
+const DIRS = [
+  [1, 0],   // 0    down
+  [1, 1],   // 1    right down
+  [0, 1],   // 2    right
+  [-1, 1],  // 3    right up
+  [-1, 0],  // 4    up
+  [-1, -1], // 5    left up
+  [0, -1],  // 6    left
+  [1, -1]   // 7    left down
+];
 
 
-function clone(arr) {
-  return JSON.parse(JSON.stringify(arr));
+
+
+//    _          _
+//   | |__   ___| |_ __   ___ _ __ ___
+//   | '_ \ / _ \ | '_ \ / _ \ '__/ __|
+//   | | | |  __/ | |_) |  __/ |  \__ \
+//   |_| |_|\___|_| .__/ \___|_|  |___/
+//              |_|
+
+
+function clone(obj) {
+  return JSON.parse(JSON.stringify(obj));
 }
 
 function py_slice(arr, a, b) {
@@ -28,8 +56,42 @@ function is_on_line(line, point) {
   return (line[0].r - point.r) * (line[0].c - line[1].c) === (line[0].r - line[1].r) * (line[0].c - point.c);
 }
 
+function get_slide(sq, d, n) {
+  return sq + DIRS[d][0] * n + DIRS[d][1];
+}
+
+function can_slide(sq, d, n, board, arrow) {
+  let r = Math.floor(sq / n) + DIRS[d][0];
+  let c = (sq % n) + DIRS[d][1];
+  if (c < 0 || c >= n || r < 0 || r >= n) {
+    return false;
+  }
+  let mov_sq = r * n + c;
+  if (
+    (board[mov_sq] != EMPTY)
+    // moving down + right
+    || ((d == 1) && arrow.includes(mov_sq - n) && arrow.includes(mov_sq - 1))
+    // moving up + right
+    || ((d == 3) && arrow.includes(mov_sq + n) && arrow.includes(mov_sq - 1))
+    // moving up + left
+    || ((d == 5) && arrow.includes(mov_sq + n) && arrow.includes(mov_sq + 1))
+    // moving down + left
+    || ((d == 7) && arrow.includes(mov_sq - n) && arrow.includes(mov_sq + 1))
+  ) {
+    return false;
+  }
+  return true;
+}
 
 
+
+
+
+//        _        _
+//    ___| |_ __ _| |_ ___  ___
+//   / __| __/ _` | __/ _ \/ __|
+//   \__ \ || (_| | ||  __/\__ \
+//   |___/\__\__,_|\__\___||___/
 
 
 
@@ -44,17 +106,7 @@ class State {
     this.board = new Array(this.n * this.n).fill(EMPTY);
     this.arrow = [];
     this.possible_moves = [];
-  }
-
-  start(white, black) {
-    if (white == black) {
-      new Error("you can't place both pieces on the same square");
-    }
-    this.moves[WHITE].push(white);
-    this.moves[BLACK].push(black);
-    this.board[white] = WHITE;
-    this.board[black] = BLACK;
-    this._find_possible_moves();
+    this.undo_stack = [];
   }
 
   _opponent() {
@@ -65,10 +117,10 @@ class State {
     this.current_player = this._opponent();
   }
 
-  _mod(a) {
+  _mod(sq) {
     return {
-      c: a % this.n,
-      r: Math.floor(a / this.n)
+      c: sq % this.n,
+      r: Math.floor(sq / this.n)
     }
   }
 
@@ -76,19 +128,17 @@ class State {
     return c + this.n * r;
   }
 
-  _set_arrow(arrow) {
-    // remove old arrow
+  _remove_arrow() {
     for (let i = 0; i < this.arrow.length; i++) {
       this.board[this.arrow[i]] -= ARROW;
     }
+  }
 
+  _set_arrow(arrow) {
     this.arrow = arrow;
-
-    // set new arrow
     for (let i = 0; i < this.arrow.length; i++) {
       this.board[this.arrow[i]] += ARROW;
     }
-
   }
 
   _arrowize(sq_a, sq_b, sq_c) {
@@ -112,7 +162,12 @@ class State {
     return arrow;
   }
 
-  set_from_combo_moves(combo_moves) {
+  set_from_combo_moves(combo_moves, undo_stack) {
+    this.undo_stack = undo_stack || [];
+    this.moves = {};
+    this.moves[WHITE] = [];
+    this.moves[BLACK] = [];
+    this.arrow = [];
     this.board = new Array(this.n * this.n).fill(EMPTY);
 
     for (let i = 0; i < combo_moves.length; i++) {
@@ -141,49 +196,30 @@ class State {
 
   get_combo_moves() {
     let combo_moves = [];
-    for (let i = 0; i < this.moves[WHITE].length + this.moves[BLACK].length; i++) {
-      combo_moves.push(this.moves[i % 2 == 0 ? WHITE : BLACK][i]);
+    for (let i = 0; i < this.moves[WHITE].length; i++) {
+      combo_moves.push(this.moves[WHITE][i]);
+      if (this.moves[BLACK][i] != undefined) {
+        combo_moves.push(this.moves[BLACK][i]);
+      }
     }
     return combo_moves;
   }
 
   _find_possible_moves() {
     this.possible_moves = [];
-    if (this.moves[this.current_player].length == 0) {
+    if (this.moves[this.current_player].length === 0) {
       for (let i = 0; i < this.board.length; i++) {
         if (this.board[i] === EMPTY) {
           this.possible_moves.push(i);
         }
       }
     } else {
-      let current_mod = this._mod(get_last(this.moves[this.current_player]));
-      const dirs = [
-        [1, 0],   // 0    down
-        [1, 1],   // 1    right down
-        [0, 1],   // 2    right
-        [-1, 1],  // 3    right up
-        [-1, 0],  // 4    up
-        [-1, -1], // 5    left up
-        [0, -1],  // 6    left
-        [1, -1]   // 7    left down
-      ];
-      for (let d = 0; d < dirs.length; d++) {
-        let r = current_mod.r + dirs[d][0];
-        let c = current_mod.c + dirs[d][1];
-        while (c >= 0 && c < this.n && r >= 0 && r < this.n) {
-          let sq = this._sq(r, c);
-          if (
-            (this.board[sq] != EMPTY)
-            || ((d == 1) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq - 1)) // moving down + right
-            || ((d == 3) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq - 1)) // moving up + right
-            || ((d == 5) && this.arrow.includes(sq + this.n) && this.arrow.includes(sq + 1)) // moving up + left
-            || ((d == 7) && this.arrow.includes(sq - this.n) && this.arrow.includes(sq + 1)) // moving down + left
-          ) {
-            break;
-          }
-          this.possible_moves.push(sq);
-          r += dirs[d][0];
-          c += dirs[d][1];
+      for (let d = 0; d < DIRS.length; d++) {
+        let sq = get_last(this.moves[this.current_player]);
+        while (can_slide(sq, d, this.n, this.board, this.arrow)) {
+          let new_sq = get_slide(sq, d, this.n);
+          this.possible_moves.push(new_sq);
+          sq = new_sq;
         }
       }
     }
@@ -206,17 +242,51 @@ class State {
         ...py_slice(this.moves[this.current_player], -2),
         get_last(this.moves[this._opponent()])
       );
+      this._remove_arrow();
       this._set_arrow(arrow);
     }
+    this.undo_stack = [];
     this._switch_players();
     this._find_possible_moves();
   }
 
+  clone() {
+    let c = new State(this.n);
+    c.moves = clone(this.moves);
+    c.current_player = this.current_player;
+    c.board = clone(this.board);
+    c.arrow = clone(this.arrow);
+    c.possible_moves = clone(this.possible_moves);
+    c.undo_stack = clone(this.undo_stack);
+    return c;
+  }
+
+  get_children() {
+    let children = [];
+    for (let i = 0; i < this.possible_moves.length; i++) {
+      let child = this.clone();
+      child.move_to(this.possible_moves[i]);
+      chilren.append(child);
+    }
+    return children;
+  }
+
+  undo() {
+    // ugh this is so annoying to do by hand... i'll just do this:
+    let combo = this.get_combo_moves();
+    let undo_stack = clone(this.undo_stack);
+    undo_stack.push(combo.pop());
+    this.set_from_combo_moves(combo);
+    this.undo_stack = undo_stack;
+  }
+
+  redo() {
+    if (this.undo_stack.length > 0) {
+      this.move_to(this.undo_stack.pop());
+    }
+  }
+
 }
-
-
-
-
 
 
 
@@ -439,6 +509,14 @@ class ViewState {
     }
 
 
+    // add numbers
+    this.ctx.fillStyle = "black";
+    for (let sq = 0; sq < this.n * this.n; sq++) {
+      let loc = vs._get_loc_from_sq(sq);
+      this.ctx.font = "15px Arial";
+      this.ctx.fillText(sq, loc.x - SQUARE / 2 + 5, loc.y - SQUARE / 2 + 20);
+    }
+
 
   }
 
@@ -463,4 +541,185 @@ class ViewState {
     return this.one_sided && (this.one_sided == this.state.current_player);
   }
 
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+//         _    ___
+//        / \  |_ _|
+//       / _ \  | |
+//      / ___ \ | |
+//     /_/   \_\___|
+
+
+
+
+
+// heuristics
+
+function mobility(state) {
+  // how many moves the player has
+  return state.possible_moves.length;
+}
+
+function domain(state) {
+  // how many squares are in the same connected component
+  let start = get_last(state.moves[state.current_player]) || 0;
+  let stack = [start];
+  let dom = [start];
+  while (stack.length != 0 && stack.length < 100) {
+    let sq = stack.pop();
+    for (let d = 0; d < DIRS.length; d++) {
+      let new_sq = get_slide(sq, d, state.n);
+      if (
+        !dom.includes(new_sq) &&
+        can_slide(sq, d, state.n, state.board, state.arrow)
+      ) {
+        dom.push(new_sq);
+        stack.push(new_sq);
+      }
+    }
+  }
+  return dom.length;
+}
+
+
+
+
+
+// desirability functions
+
+function alpha(state) {
+  return mobility(state) * domain(state) - max_child(state, mobility).val;
+}
+
+
+
+
+// abstract searches
+
+
+function min_child(state, func) {
+  /*
+    find the child state whose func is the lowest
+  */
+  let val = Infinity;
+  let move = null;
+  let child = null;
+  for (let i in state.possible_moves) {
+    let c = state.clone();
+    c.move_to(state.possible_moves[i]);
+    let f = func(c);
+    if (f < val) {
+      val = f;
+      move = state.possible_moves[i];
+      child = c;
+    }
+  }
+  return {
+    move: move,
+    child: child,
+    val: val
+  };
+}
+
+function max_child(state, func) {
+  /*
+    find the child state whose func is the highest (== -func is the lowest)
+  */
+  return min_child(state, (s) => -func(s))
+}
+
+
+function min_max(state, func) {
+  /*
+    maximize over second level minimization.
+    (find the child whose smallest child is the largest)
+  */
+  return max_child(state, function(s) {
+    return min_child(s, func).val;
+  });
+}
+
+
+
+
+
+
+
+// fixed searches
+
+function comp_find_winning_move(state) {
+  /*
+    find if there is a next move that will win
+    == lowest mobility of a child is 0
+  */
+  for (let sq of state.possible_moves) {
+    let child = state.clone();
+    child.move_to(sq);
+    if (mobility(child) == 0) {
+      return sq;
+    }
+  }
+  return null;
+}
+
+function comp_find_losing_moves(state) {
+  /*
+    find the next moves that could lose
+  */
+  let moves = [];
+  for (let sq of state.possible_moves) {
+    let child = state.clone();
+    child.move_to(sq);
+    for (let sq2 of child.possible_moves) {
+      let grandchild = child.clone();
+      grandchild.move_to(sq2);
+      if (mobility(grandchild) == 0) {
+        moves.push(sq);
+      }
+    }
+  }
+  return moves;
+}
+
+
+
+
+
+// fixed methods
+
+
+function comp_first_move(state) {
+  return state.possible_moves[0];
+}
+
+function comp_random_move(state) {
+  return state.possible_moves[
+    Math.floor(
+      Math.random() * state.possible_moves.length
+    )
+  ];
+}
+
+function comp_min_opp_mobility(state) {
+  return
+    comp_find_winning_move(state) ||
+    min_child(state, mobility).move;
+}
+
+function comp_min_max_play_mobility(state) {
+  return
+    comp_find_winning_move(state) ||
+    min_max(state, mobility).move;
 }

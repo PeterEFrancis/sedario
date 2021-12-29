@@ -96,7 +96,6 @@
         type: 'POST',
         cache: false,
         success: function(response) {
-          console.log(response);
           document.getElementById('top-10').innerHTML = '';
           for (let i = 0; i < response.length; i++) {
             let li = document.createElement('li');

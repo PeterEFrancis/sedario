@@ -48,7 +48,7 @@ br {
 .btn-info {
   background-color: var(--blue);
 }
-.btn-info:hover {
+.btn-info:hover .btn-info:active {
   background-color: var(--lightblue);
 }
 

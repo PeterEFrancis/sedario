@@ -42,11 +42,11 @@ db = SQLAlchemy(app)
 class SysData(db.Model):
     __tablename__ = "SysData"
     id = db.Column(db.Integer, primary_key=True)
-    last_time_ranked = db.Column(db.Text)
+    # last_time_ranked = db.Column(db.Text)
     top_10 = db.Column(db.Text)
 
     def __init__(self):
-        last_time_ranked = '0'
+        # last_time_ranked = '0'
         top_10 = ''
 
 
@@ -71,9 +71,9 @@ def set_user_ranks():
     sd.last_time_ranked = str(time.time())
     db.session.commit()
 
-def time_tasks():
-    if time.time() > float(get_SysData().last_time_ranked) + 60 * 60:
-        set_user_ranks()
+# def time_tasks():
+#     if time.time() > float(get_SysData().last_time_ranked) + 60 * 60:
+#         set_user_ranks()
 
 def get_recent_and_public_users():
     public = db.session.query(User).filter(User.public == True)
@@ -240,6 +240,8 @@ class Game(db.Model):
     rated = db.Column(db.Boolean)
     combo_moves = db.Column(db.Text)
 
+    undo_stack = db.Column(db.Text)
+
     # for review
     # L = db.Column(db.Integer)
     # tree = db.Column(db.Text)
@@ -253,10 +255,11 @@ class Game(db.Model):
         self.type = type
         self.rated = rated
         self.combo_moves = '[]'
+        self.undo_stack = '[]'
 
     def make_move(self, move):
         self.combo_moves = str(eval(self.combo_moves) + [move])
-        self.redo_stack = '[]'
+        self.undo_stack = '[]'
         db.session.commit()
 
     def get_winner(self):
@@ -269,6 +272,20 @@ class Game(db.Model):
         elif self.white == player:
             return self.black
         return None
+
+    def undo(self):
+        combo_moves = eval(self.combo_moves)
+        undo_stack = eval(self.undo_stack)
+        self.undo_stack = str(undo_stack + [combo_moves.pop()])
+        self.combo_moves = str(combo_moves)
+        db.session.commit()
+
+    def redo(self):
+        combo_moves = eval(self.combo_moves)
+        undo_stack = eval(self.undo_stack)
+        self.combo_moves = str(combo_moves + [undo_stack.pop()])
+        self.undo_stack = str(undo_stack)
+        db.session.commit()
 
 
 def get_game(gameid):
@@ -310,7 +327,7 @@ def get_salt(n):
 
 
 def get_account_bar():
-    time_tasks()
+    # time_tasks()
     is_user_and_logged_in, user = get_session_user()
     username = ''
     num_alerts = 0
@@ -657,35 +674,48 @@ def game_access():
         return "you don't have access to this game", 403
 
     method = request.form['method']
+
     if method == 'get':
         return jsonify(eval(game.combo_moves)), 200
-    if method == 'move_h':
-        game.make_move(int(request.form['square']))
-        socketio.emit('update game p', room=f'game-{game_id}')
-        if request.form['game_over'] == "true":
-            # game over
-            game.state = 'r'
-            white = get_user(game.white)[1]
-            black = get_user(game.black)[1]
-            white.end_game(game.id)
-            black.end_game(game.id)
-            if game.rated:
-                ws = len(eval(game.combo_moves)) % 2 == 1 # white's turn => black wins
-                bs = 1 - ws
-                white.elo, black.elo = elo(white.elo, black.elo, ws, bs, len(eval(white.past_games)), len(eval(white.past_games)))
-                set_user_ranks()
-                socketio.emit('update top 10')
-            db.session.commit()
-            socketio.emit('update past games', room='user-'+game.white)
-            socketio.emit('update past games', room='user-'+game.black)
-        return 'move success', 200
-    if method == 'move_p':
-        game.make_move(int(request.form['square']))
-        if request.form['game_over'] == "true":
-            game.state = 'r'
+
+    if game.type == 'h':
+        if method == 'move_h':
+            game.make_move(int(request.form['square']))
+            socketio.emit('update game p', room=f'game-{game_id}')
+            if request.form['game_over'] == "true":
+                # game over
+                game.state = 'r'
+                white = get_user(game.white)[1]
+                black = get_user(game.black)[1]
+                white.end_game(game.id)
+                black.end_game(game.id)
+                if game.rated:
+                    ws = len(eval(game.combo_moves)) % 2 == 1 # white's turn => black wins
+                    bs = 1 - ws
+                    white.elo, black.elo = elo(white.elo, black.elo, ws, bs, len(eval(white.past_games)), len(eval(white.past_games)))
+                    set_user_ranks()
+                    socketio.emit('update top 10')
+                db.session.commit()
+                socketio.emit('update past games', room='user-'+game.white)
+                socketio.emit('update past games', room='user-'+game.black)
+            return 'move success', 200
+    if game.type == 'p':
+        if method == 'move_p':
+            game.make_move(int(request.form['square']))
+            if request.form['game_over'] == "true":
+                game.state = 'r'
+        if method == 'undo_p':
+            game.undo()
+        if method == 'redo_p':
+            game.redo()
+
+
         return 'move success', 200
 
-    return "The method you are trying to access doesn't exist", 403
+
+
+
+    return "Either you do not have permission, or the method you are trying to access doesn't exist", 403
 
 
 

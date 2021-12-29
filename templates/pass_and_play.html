@@ -44,6 +44,13 @@
           </div>
         </div>
       </div>
+      <div class="row">
+        <div class="col-lg-12">
+          <div class="panel dark">
+            <div class="panel-body text-center">
+              <button id="undo" class="btn btn-lg btn-info" onclick="undo()">Undo</button>
+              <button id="redo" class="btn btn-lg btn-info" onclick="redo()">Redo</button>
+            </div>
 
     </div>
 
@@ -57,19 +64,21 @@
 
     let s = new State(8);
     let vs = new ViewState(s);
-    vs.state.set_from_combo_moves({{ game.combo_moves }});
+    vs.state.set_from_combo_moves({{ game.combo_moves }}, {{ game.undo_stack }});
     vs.update_display();
+    set_buttons();
     end_game();
     let cont = document.getElementById('canvas-container');
     cont.appendChild(vs.get_DOM());
 
     vs.click_handler = function(sq) {
       s._find_possible_moves();
+      set_buttons();
       $.ajax({
         url: '/game_access',
         data: {
           'method': 'move_p',
-          'id':'{{ game.id }}',
+          'id': '{{ game.id }}',
           'square': sq,
           'game_over': s.possible_moves.length == 0
         },
@@ -112,6 +121,56 @@
         },
       });
     }
+
+
+    function set_buttons() {
+      document.getElementById('redo').disabled = s.undo_stack.length == 0;
+      document.getElementById('undo').disabled = s.moves[s._opponent()].length == 0;
+    }
+
+
+    function undo() {
+      s.undo();
+      vs.update_display();
+      set_buttons();
+      $.ajax({
+        url: '/game_access',
+        data: {
+          'method': 'undo_p',
+          'id': '{{ game.id }}',
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+
+        },
+        error: function(error){
+          console.error(error.responseText);
+        }
+      });
+    }
+
+    function redo() {
+      s.redo();
+      vs.update_display();
+      set_buttons();
+      $.ajax({
+        url: '/game_access',
+        data: {
+          'method': 'redo_p',
+          'id':'{{ game.id }}'
+        },
+        type: 'POST',
+        cache: false,
+        success: function(response) {
+
+        },
+        error: function(error){
+          console.error(error.responseText);
+        }
+      });
+    }
+
 
   </script>
 
