@@ -43,7 +43,7 @@
             </p>
             {% if logged_in %}
             {% if user.has_friend %}
-            <button class="btn btn-success" onclick="alert('do this')">Challenge</button>
+            <p>You're friends!</p>
             {% else %}
             <button type="button" class="btn btn-info" onclick="friend_request()" {% if not user.has_friend_request(s_user.username) %} disabled {% endif %}>Friend Request</button>
             <script>
