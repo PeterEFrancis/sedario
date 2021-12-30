@@ -563,24 +563,37 @@
             for (let i = 0; i < response.length; i++) {
               let li1 = document.createElement('li');
               li1.classList.add('list-group-item', 'dark');
-              let a = document.createElement('a');
-              a.href = "/user/" + response[i][0];
-              a.innerHTML = response[i][0];
+
+              li1.appendChild(document.createTextNode(response[i][2] == '{{ user.username }}' ? "(W) " : "(L) "));
+
+              let a;
+              if (response[i][0].startsWith('COMP@')) {
+                li1.appendChild(document.createTextNode("COMP"));
+              } else {
+                a = document.createElement('a');
+                a.href = "/user/" + response[i][0];
+                a.innerHTML = response[i][0];
+                li1.appendChild(a);
+              }
+
               let review = document.createElement('button');
               review.classList.add('btn', 'btn-sm', 'btn-success', 'li-btn');
               review.onclick = function() {
                 location.href = "/game/" + response[i][1];
               }
               review.innerHTML = "Review";
-              li1.appendChild(document.createTextNode(response[i][2] == '{{ user.username }}' ? "(W) " : "(L) "));
-              li1.appendChild(a);
+
               li1.appendChild(document.createTextNode(' (game #' + (response[i][1] + ')')));
               li1.appendChild(review);
 
               if (i < 5) {
                 li2 = li1.cloneNode();
                 li2.appendChild(document.createTextNode(response[i][2] == '{{ user.username }}' ? "(W) " : "(L) "));
-                li2.appendChild(a.cloneNode(true));
+                if (response[i][0].startsWith('COMP@')) {
+                  li2.appendChild(document.createTextNode("COMP"));
+                } else {
+                  li2.appendChild(a.cloneNode(true));
+                }
                 li2.appendChild(document.createTextNode(' (game #' + (response[i][1] + ')')));
                 let review2 = review.cloneNode(true);
                 review2.onclick = function() {
