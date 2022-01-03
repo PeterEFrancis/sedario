@@ -240,12 +240,8 @@ class Game(db.Model):
     state = db.Column(db.Text)
     rated = db.Column(db.Boolean)
     combo_moves = db.Column(db.Text)
-
-    undo_stack = db.Column(db.Text)
-
-    # for review
-    # L = db.Column(db.Integer)
-    # tree = db.Column(db.Text)
+    stack = db.Column(db.Text)
+    L = db.Column(db.Integer)
 
 
 
@@ -256,11 +252,12 @@ class Game(db.Model):
         self.type = type
         self.rated = rated
         self.combo_moves = '[]'
-        self.undo_stack = '[]'
+        self.stack = '[]'
+        self.L = 0
 
     def make_move(self, move):
         self.combo_moves = str(eval(self.combo_moves) + [move])
-        self.undo_stack = '[]'
+        self.stack = '[]'
         db.session.commit()
 
     def get_winner(self):
@@ -276,18 +273,24 @@ class Game(db.Model):
 
     def undo(self):
         combo_moves = eval(self.combo_moves)
-        undo_stack = eval(self.undo_stack)
-        self.undo_stack = str(undo_stack + [combo_moves.pop()])
+        stack = eval(self.stack)
+        self.stack = str(stack + [combo_moves.pop()])
         self.combo_moves = str(combo_moves)
         db.session.commit()
 
     def redo(self):
         combo_moves = eval(self.combo_moves)
-        undo_stack = eval(self.undo_stack)
-        self.combo_moves = str(combo_moves + [undo_stack.pop()])
-        self.undo_stack = str(undo_stack)
+        stack = eval(self.stack)
+        self.combo_moves = str(combo_moves + [stack.pop()])
+        self.stack = str(stack)
         db.session.commit()
 
+    def end_game(self):
+        self.state = 'r'
+        stack = eval(self.combo_moves)
+        self.stack = self.combo_moves
+        self.L = len(stack) - 1
+        db.session.commit()
 
 def get_game(gameid):
     games = db.session.query(Game).filter(Game.id == gameid)
@@ -582,7 +585,7 @@ def user_access():
             return "You already requested to be their friend", 403
         r_user.add_friend_request(username)
         socketio.emit('alert', {
-            'msg':f'You have a friend request from {user.username}.',
+            'msg': f'You have a friend request from {user.username}.',
             'add': 1,
             'link': f'/user/{r_user.username}#friend-requests'
         }, room='user-'+r_user.username)
@@ -718,56 +721,84 @@ def game_access():
     if method == 'get':
         return jsonify(eval(game.combo_moves)), 200
 
-    if game.type == 'h':
-        if method == 'move_h':
-            game.make_move(int(request.form['square']))
-            socketio.emit('update game', room=f'game-{game_id}')
-            if request.form['game_over'] == "true":
-                game.state = 'r'
-                white = get_user(game.white)[1]
-                black = get_user(game.black)[1]
-                white.end_game(game.id)
-                black.end_game(game.id)
-                if game.rated:
-                    ws = len(eval(game.combo_moves)) % 2 == 1 # white's turn => black wins
-                    bs = 1 - ws
-                    white.elo, black.elo = elo(white.elo, black.elo, ws, bs, len(eval(white.past_games)), len(eval(white.past_games)))
-                    set_user_ranks()
-                    socketio.emit('update top 10')
-                db.session.commit()
-                socketio.emit('update past games', room='user-'+game.white)
-                socketio.emit('update past games', room='user-'+game.black)
-            return 'move_h success', 200
-    if game.type == 'p':
-        if method == 'move_p':
-            game.make_move(int(request.form['square']))
-            if request.form['game_over'] == "true":
-                s_user.end_game(game.id)
-                game.state = 'r'
-                db.session.commit()
-                socketio.emit('update past games', room='user-'+s_user.username)
-            return 'move_p success', 200
-        if method == 'undo_p':
-            game.undo()
-            return 'undo_p success', 200
-        if method == 'redo_p':
-            game.redo()
-            return 'redo_p success', 200
-    if game.type == 'c':
-        if method == 'move_c':
-            game.make_move(int(request.form['square']))
-            if request.form['game_over'] == "true":
-                game.state = 'r'
-                s_user.end_game(game.id)
-                db.session.commit()
-                socketio.emit('update past games', room='user-'+s_user.username)
-            return 'move success', 200
+    if game.state == 'p':
+        if game.type == 'h':
+            if method == 'move_h':
+                game.make_move(int(request.form['square']))
+                socketio.emit('update game', room=f'game-{game_id}')
+                if request.form['game_over'] == "true":
+                    game.end_game()
+                    white = get_user(game.white)[1]
+                    black = get_user(game.black)[1]
+                    white.end_game(game.id)
+                    black.end_game(game.id)
+                    if game.rated:
+                        ws = len(eval(game.combo_moves)) % 2 == 1 # white's turn => black wins
+                        bs = 1 - ws
+                        white.elo, black.elo = elo(white.elo, black.elo, ws, bs, len(eval(white.past_games)), len(eval(white.past_games)))
+                        set_user_ranks()
+                        socketio.emit('update top 10')
+                    db.session.commit()
+                    socketio.emit('update past games', room='user-'+game.white)
+                    socketio.emit('update past games', room='user-'+game.black)
+                return 'move_h success', 200
+        if game.type == 'p':
+            if method == 'move_p':
+                game.make_move(int(request.form['square']))
+                if request.form['game_over'] == "true":
+                    s_user.end_game(game.id)
+                    game.end_game()
+                    db.session.commit()
+                    socketio.emit('update past games', room='user-'+s_user.username)
+                return 'move_p success', 200
+            if method == 'undo_p':
+                game.undo()
+                return 'undo_p success', 200
+            if method == 'redo_p':
+                game.redo()
+                return 'redo_p success', 200
+        if game.type == 'c':
+            if method == 'move_c':
+                game.make_move(int(request.form['square']))
+                if request.form['game_over'] == "true":
+                    game.end_game()
+                    s_user.end_game(game.id)
+                    db.session.commit()
+                    socketio.emit('update past games', room='user-'+s_user.username)
+                return 'move success', 200
 
-
-
-
+    if game.state == 'r':
+        if method == 'get_review_data':
+            return jsonify({
+                "L": game.L,
+                "combo_moves": game.combo_moves,
+                "stack": game.stack
+            })
+        if method == 'move':
+            game.L = game.L + 1
+            stack = eval(game.stack)
+            sq = int(request.form['square'])
+            if game.L + 1 >= len(stack) or sq != stack[game.L]:
+                stack = stack[:game.L] + [sq]
+                game.stack = str(stack)
+            db.session.commit()
+            socketio.emit('update review', room=f'game-{game.id}')
+            return 'move successful', 200
+        if method == 'traverse':
+            game.L = int(request.form['i']);
+            db.session.commit()
+            socketio.emit('update review', room=f'game-{game.id}')
+            return 'traverse successful', 200
+        if method == 'retrack':
+            game.L = int(request.form['i']);
+            game.stack = str(eval(game.combo_moves)[:game.L + 1])
+            db.session.commit()
+            socketio.emit('update review', room=f'game-{game.id}')
+            return 'traverse successful', 200
 
     return "Either you do not have permission, or the method you are trying to access doesn't exist", 403
+
+
 
 
 

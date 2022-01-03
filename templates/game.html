@@ -22,6 +22,20 @@
 
     <div class="container">
       <div class="row">
+        <div class="col-md-12">
+          <div class="panel dark">
+            <div class="panel-heading">
+              <h3 class="text-center" style="margin:10px;">
+                <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span>
+                - vs -
+                <span style="background-color: black; padding: 5px; border-radius: 5px;">{{ game.black }}</span>
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
         <div class="col-lg-12">
           <div class="panel dark">
             <div class="panel-body text-center" id="canvas-container"></div>
@@ -41,19 +55,6 @@
                   <p id="rematch-feedback" style="margin-top: 15px; margin-bottom: 0px;"></p>
                 </div>
               </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
-        <div class="col-md-12">
-          <div class="panel dark">
-            <div class="panel-heading">
-              <h3 class="text-center" style="margin:10px;">
-                <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span>
-                - vs -
-                <span style="background-color: black; padding: 5px; border-radius: 5px;">{{ game.black }}</span>
-              </h3>
-            </div>
           </div>
         </div>
       </div>

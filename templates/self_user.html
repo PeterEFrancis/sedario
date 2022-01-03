@@ -550,6 +550,9 @@
         type: 'POST',
         cache: false,
         success: function(response) {
+
+          const CUTOFF = 5;
+
           if (response.length == 0) {
             document.getElementById('no-past-games').style.display = 'block';
             document.getElementById('past-games-list').style.display = 'none';
@@ -557,8 +560,8 @@
           } else {
             document.getElementById('no-past-games').style.display = 'none';
             document.getElementById('past-games-list').style.display = 'block';
-            document.getElementById('view-more-past-games').style.display = 'block';
             document.getElementById('past-games-list').innerHTML = '';
+            document.getElementById('view-more-past-games').style.display = response.length > CUTOFF ? 'block' : 'none';
 
             for (let i = 0; i < response.length; i++) {
               let li1 = document.createElement('li');
@@ -579,14 +582,14 @@
               let review = document.createElement('button');
               review.classList.add('btn', 'btn-sm', 'btn-success', 'li-btn');
               review.onclick = function() {
-                location.href = "/game/" + response[i][1];
+                location.href = "/review/" + response[i][1];
               }
               review.innerHTML = "Review";
 
               li1.appendChild(document.createTextNode(' (game #' + (response[i][1] + ')')));
               li1.appendChild(review);
 
-              if (i < 5) {
+              if (i < CUTOFF) {
                 li2 = li1.cloneNode();
                 li2.appendChild(document.createTextNode(response[i][2] == '{{ user.username }}' ? "(W) " : "(L) "));
                 if (response[i][0].startsWith('COMP@')) {
@@ -597,7 +600,7 @@
                 li2.appendChild(document.createTextNode(' (game #' + (response[i][1] + ')')));
                 let review2 = review.cloneNode(true);
                 review2.onclick = function() {
-                  location.href = "/game/" + response[i][1];
+                  location.href = "/review/" + response[i][1];
                 }
                 li2.appendChild(review2);
                 document.getElementById('past-games-list').appendChild(li2);

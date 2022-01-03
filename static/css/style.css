@@ -121,3 +121,28 @@ input {
   border-radius: 50%;
   width: 200px;
 }
+
+
+.review-white, .review-black {
+  margin: 5px;
+}
+
+.review-white *, .review-black * {
+  background-color: transparent;
+  color: inherit;
+}
+
+.review-white {
+  background-color: white;
+  color: black;
+}
+
+.review-black {
+  background-color: black;
+  color: white;
+}
+
+.review-black:hover, .review-black *:hover {
+  background-color: #222 !important;
+  color: white;
+}

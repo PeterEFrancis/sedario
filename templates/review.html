@@ -22,14 +22,6 @@
 
     <div class="container">
       <div class="row">
-        <div class="col-lg-12">
-          <div class="panel dark">
-            <div class="panel-body text-center" id="canvas-container">
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="row">
         <div class="col-md-12">
           <div class="panel dark">
             <div class="panel-heading">
@@ -42,6 +34,21 @@
           </div>
         </div>
       </div>
+      <div class="row">
+        <div class="col-lg-9">
+          <div class="panel dark">
+            <div class="panel-body text-center" id="canvas-container">
+            </div>
+          </div>
+        </div>
+        <div class="col-lg-3">
+          <div class="panel dark">
+            <div class="panel-body" id="side-container">
+            </div>
+          </div>
+        </div>
+      </div>
+
 
     </div>
 
@@ -52,32 +59,47 @@
 
   <script>
 
-    var s, vs;
+    var rs;
 
-    function set_screen_p(combo_moves) {
-      s = new State(8);
-      s.set_from_combo_moves(combo_moves);
-      vs = new ViewState(s, {% if game.white == user.username %}WHITE{% else %}BLACK{% endif %});
-      let cont = document.getElementById('canvas-container');
-      while (cont.hasChildNodes()) {
-        cont.removeChild(cont.childNodes[0]);
-      }
-      cont.appendChild(vs.get_DOM());
-      vs.update_display();
-      vs.click_handler = function(sq) {
-        s._find_possible_moves();
+    function set_screen(L, stack, combo_moves) {
+      rs = new ReviewState(8, L, stack, combo_moves);
+      let canvas_cont = document.getElementById('canvas-container');
+      canvas_cont.innerHTML =  "";
+      canvas_cont.appendChild(rs.vs.get_DOM());
+      let side_cont = document.getElementById('side-container');
+      side_cont.innerHTML =  "";
+      side_cont.appendChild(rs.get_side_bar_stack());
+      rs.vs.update_display();
+      rs.vs.click_handler = function(sq) {
         $.ajax({
           url: '/game_access',
           data: {
             'method': 'move',
-            'id':'{{ game.id }}',
+            'id': '{{ game.id }}',
             'square': sq,
-            'game_over': s.possible_moves.length == 0
           },
           type: 'POST',
           cache: false,
           success: function(response) {
-            update_p();
+            update_review(); // this will "double" update canvas :/ oh well
+          },
+          error: function(error){
+            console.error(error.responseText);
+          }
+        });
+      }
+      rs.button_click_handler = function (i, method) {
+        $.ajax({
+          url: '/game_access',
+          data: {
+            'method': method,
+            'id': '{{ game.id }}',
+            'i': i
+          },
+          type: 'POST',
+          cache: false,
+          success: function(response) {
+            update_review();
           },
           error: function(error){
             console.error(error.responseText);
@@ -87,20 +109,17 @@
     }
 
 
-    function update_p() {
+    function update_review() {
       $.ajax({
         url: '/game_access',
         data: {
-          'method': 'get',
-          'id':'{{ game.id }}'
+          'method': 'get_review_data',
+          'id': '{{ game.id }}'
         },
         type: 'POST',
         cache: false,
         success: function(response) {
-          // if different
-          if (response.length != s.moves[WHITE].length + s.moves[BLACK].length) {
-            set_screen_p(response);
-          }
+          set_screen(response.L, JSON.parse(response.stack), JSON.parse(response.combo_moves));
         },
         error: function(error){
           console.error(error);
@@ -111,15 +130,10 @@
     // join game
     socket.emit('join game', {id:'{{ game.id }}'});
 
-    set_screen_p(JSON.parse({{ game.combo_moves|tojson }}));
-    // changes to board play
-    socket.on('update game p', function(msg) {
-      update_p();
-    });
-
+    update_review();
     // changes to board review
-    socket.on('update game r', function(msg) {
-      update_p();
+    socket.on('update review', function(msg) {
+      update_review();
     });
 
 

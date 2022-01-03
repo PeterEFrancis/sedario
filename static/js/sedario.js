@@ -45,7 +45,13 @@ function clone(obj) {
 
 function py_slice(arr, a, b) {
   // python-like slice method
-  return arr.slice((a + arr.length) % arr.length, b ? (b + arr.length) % arr.length : arr.length);
+  let c = (a + arr.length) % arr.length;
+  let d = 0;
+  if (b == undefined) {
+    return arr.slice(c);
+  }
+  d = b != arr.length ? (b + arr.length) % arr.length : arr.length;
+  return arr.slice(c, d);
 }
 
 function get_last(arr) {
@@ -517,7 +523,7 @@ class ViewState {
     // add numbers
     this.ctx.fillStyle = "black";
     for (let sq = 0; sq < this.n * this.n; sq++) {
-      let loc = vs._get_loc_from_sq(sq);
+      let loc = this._get_loc_from_sq(sq);
       this.ctx.font = "15px Arial";
       this.ctx.fillText(sq, loc.x - SQUARE / 2 + 5, loc.y - SQUARE / 2 + 20);
     }
@@ -550,6 +556,93 @@ class ViewState {
 
 
 
+class ReviewState {
+
+  constructor(n, L, stack, combo_moves) {
+    this.L = L;
+    this.stack = stack;
+    this.combo_moves = combo_moves;
+    let s = new State(n);
+    s.set_from_combo_moves(py_slice(this.stack, 0, L + 1));
+    this.vs = new ViewState(s);
+    this.button_click_handler = function() {};
+  }
+
+  _make_button(text, combo_track, color, current) {
+    let button = document.createElement('button');
+    button.classList.add('btn', 'btn-default', 'review-' + color);
+    if (!combo_track) {
+      // button.style.border = "5px blue solid";
+      button.style.boxShadow = "0 0 0 4px blue inset";
+    }
+    let span = document.createElement('span');
+    span.innerHTML = text;
+    span.style.display = "block";
+    // span.style.padding = "0.25em";
+    span.style.width = "1.5em";
+    span.style.height = "1.5em";
+    button.appendChild(span);
+    if (current) {
+      // span.style.backgroundColor = "red";
+      span.style.borderRadius = "50%";
+      span.style.boxShadow = "0px 0px 5px 5px yellow";    }
+    return button;
+  }
+
+  get_side_bar_stack() {
+    const t = this;
+    let div = document.createElement('div');
+    let break_point = null;
+
+    for (let i = 0; i < this.stack.length; i++) {
+
+      if (break_point === null && this.stack[i] != this.combo_moves[i]) {
+        break_point = i;
+      }
+
+      let button = this._make_button(
+        this.stack[i],
+        break_point === null,
+        i % 2 == 0 ? 'white' : 'black',
+        i === this.L
+      );
+      const _i = i;
+      button.onclick = function() {
+        t.button_click_handler(_i, 'traverse');
+      }
+      div.appendChild(button);
+
+      if (i < this.stack.length - 1) {
+        div.appendChild(document.createTextNode(">"));
+      }
+
+    }
+    if (break_point != null) {
+      let breaker = document.createElement('span');
+      breaker.innerHTML = '|| ';
+      breaker.style.margin = '3px';
+      div.appendChild(breaker);
+      for (let i = break_point; i < this.combo_moves.length; i++) {
+        let button = this._make_button(
+          this.combo_moves[i - break_point],
+          true,
+          i % 2 == 0 ? 'white' : 'black',
+          false
+        );
+        const _i = i;
+        button.onclick = function() {
+          t.button_click_handler(_i, 'retrack');
+        }
+        div.appendChild(button);
+      }
+    }
+    return div;
+  }
+
+
+
+
+}
 
 
 
