@@ -337,7 +337,7 @@ class ViewState {
 
     this.canvas.addEventListener('mousemove', function(evt) {
       let sq = t._get_sq_from_evt(evt);
-      if (t.state.can_move_to(sq)) {
+      if (t.state.can_move_to(sq) && t.is_current_player()) {
         t.hover_sq = sq;
       } else {
         t.hover_sq = null;
@@ -635,8 +635,6 @@ class ReviewState {
   }
 
 
-
-
 }
 
 
@@ -808,7 +806,7 @@ const COMP_STRATEGIES = {
   },
 
   comp_first_move: function(state) {
-    return state.possible_moves[0];
+    return Math.min(...state.possible_moves);
   },
 
   comp_min_opp_mobility: function(state) {

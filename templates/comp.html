@@ -70,9 +70,9 @@
 
   <script>
 
-    let this_player = {% if game.white == user.username %}WHITE{% else %}BLACK{% endif %};
-    let s = new State(8);
-    let vs = new ViewState(s, this_player);
+    var this_player = {% if game.white == user.username %}WHITE{% else %}BLACK{% endif %};
+    var s = new State(8);
+    var vs = new ViewState(s, this_player);
     vs.state.set_from_combo_moves({{ game.combo_moves }});
     vs.update_display();
     let cont = document.getElementById('canvas-container');
@@ -110,7 +110,7 @@
     function comp_move() {
       setTimeout(function() {
         let sq = COMP_STRATEGIES['{{ comp_strategy }}'](s);
-        s.move_to(sq);;
+        s.move_to(sq);
         vs.update_display();
         send_move(sq);
       }, 1000);
