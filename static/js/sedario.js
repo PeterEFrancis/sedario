@@ -585,7 +585,7 @@ class ReviewState {
     if (current) {
       // span.style.backgroundColor = "red";
       span.style.borderRadius = "50%";
-      span.style.boxShadow = "0px 0px 5px 5px yellow";    }
+      span.style.boxShadow = "0px 0px 5px 5px purple";    }
     return button;
   }
 
