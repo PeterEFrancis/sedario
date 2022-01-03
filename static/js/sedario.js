@@ -572,20 +572,15 @@ class ReviewState {
     let button = document.createElement('button');
     button.classList.add('btn', 'btn-default', 'review-' + color);
     if (!combo_track) {
-      // button.style.border = "5px blue solid";
       button.style.boxShadow = "0 0 0 4px blue inset";
     }
     let span = document.createElement('span');
+    span.classList.add('review-span');
     span.innerHTML = text;
-    span.style.display = "block";
-    // span.style.padding = "0.25em";
-    span.style.width = "1.5em";
-    span.style.height = "1.5em";
+    button.style.padding = "0px";
     button.appendChild(span);
     if (current) {
-      // span.style.backgroundColor = "red";
-      span.style.borderRadius = "50%";
-      span.style.boxShadow = "0px 0px 5px 5px purple";    }
+      span.style.boxShadow = "0px 0px 5px 2px yellow";    }
     return button;
   }
 
