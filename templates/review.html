@@ -69,7 +69,18 @@
       let side_cont = document.getElementById('side-container');
       side_cont.innerHTML =  "";
       side_cont.appendChild(rs.get_side_bar_stack());
+      // draw next square
+      let next_square = L + 1 == stack.length ? null : stack[L + 1];
+      let next_color = 'blue';
+      if ("{{ game.type == 'c' }}" === 'True' && rs.is_off_combo_moves() && '{{ comp_opponent }}' != "" && rs.vs.is_current_player()) {
+        next_square = COMP_STRATEGIES['{{ comp_opponent }}'](rs.vs.state);
+        next_color = 'orange';
+      }
+      if (next_square != null) {
+        rs.vs.temp_squares = [[next_square, next_color]];
+      }
       rs.vs.update_display();
+
       rs.vs.click_handler = function(sq) {
         $.ajax({
           url: '/game_access',

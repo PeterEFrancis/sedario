@@ -481,12 +481,15 @@ def review(gameid):
         return error_page(404)
     if not s_user.has_game(game.id):
         return error_page(403)
+    comp = game.get_opponent(s_user.username).split('@')
+    comp_opponent = comp[1] if len(comp) == 2 else ''
     return render_template(
         'review.html',
         user = s_user,
         account_bar = get_account_bar(),
         footer = get_footer(),
-        game = game
+        game = game,
+        comp_opponent = comp_opponent
     )
 
 

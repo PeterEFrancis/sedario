@@ -304,13 +304,16 @@ class State {
 
 class ViewState {
 
-  constructor(state, one_sided) {
+  constructor(state, one_sided, review) {
     this.n = state.n;
     this.state = state;
 
     this.one_sided = one_sided; // ommit for False
 
     this.hover_sq = null;
+
+    this.review = review;
+    this.temp_squares = [];
 
     this.size = SQUARE * this.n + 2 * (this.n + 1);
 
@@ -326,7 +329,7 @@ class ViewState {
       let sq = t._get_sq_from_evt(evt);
       if (
         t.state.can_move_to(sq) &&
-        (!t.one_sided || t.one_sided == t.state.current_player)
+        (t.is_current_player() || t.review)
       ) {
         t.state.move_to(sq);
         t.click_handler(sq);
@@ -337,7 +340,7 @@ class ViewState {
 
     this.canvas.addEventListener('mousemove', function(evt) {
       let sq = t._get_sq_from_evt(evt);
-      if (t.state.can_move_to(sq) && t.is_current_player()) {
+      if (t.state.can_move_to(sq) && (t.is_current_player() || t.review)) {
         t.hover_sq = sq;
       } else {
         t.hover_sq = null;
@@ -411,6 +414,12 @@ class ViewState {
     }
   }
 
+  draw_square(sq, color) {
+    this.ctx.fillStyle = color;
+    let loc = this._get_loc_from_sq(sq);
+    this.ctx.fillRect(loc.x - SQUARE / 8, loc.y - SQUARE / 8, SQUARE / 4, SQUARE / 4);
+  }
+
   update_display() {
     this.ctx.clearRect(0, 0, this.size, this.size);
 
@@ -457,12 +466,10 @@ class ViewState {
       this.ctx.stroke();
     }
 
-    if (!this.one_sided || this.one_sided == this.state.current_player) {
+    if (this.is_current_player() || this.review) {
       // add suggestion squares
-      this.ctx.fillStyle = "lightgreen";
       for (let i = 0; i < this.state.possible_moves.length; i++) {
-        let loc = this._get_loc_from_sq(this.state.possible_moves[i]);
-        this.ctx.fillRect(loc.x - SQUARE / 8, loc.y - SQUARE / 8, SQUARE / 4, SQUARE / 4);
+        this.draw_square(this.state.possible_moves[i], 'lightgreen');
       }
 
       // hover
@@ -510,7 +517,7 @@ class ViewState {
       this.ctx.closePath();
       this.ctx.fill();
       this.ctx.stroke();
-    } else if (!this.one_sided || this.one_sided == this.state.current_player) {
+    } else if (this.is_current_player() || this.review) {
       // red dot
       this.ctx.fillStyle = 'red';
       let loc = this._get_loc_from_sq(get_last(this.state.moves[this.state.current_player]));
@@ -526,6 +533,11 @@ class ViewState {
       let loc = this._get_loc_from_sq(sq);
       this.ctx.font = "15px Arial";
       this.ctx.fillText(sq, loc.x - SQUARE / 2 + 5, loc.y - SQUARE / 2 + 20);
+    }
+
+    // add temp squares
+    for (let i = 0; i < this.temp_squares.length; i++) {
+      this.draw_square(...this.temp_squares[i]);
     }
 
 
@@ -549,10 +561,14 @@ class ViewState {
   }
 
   is_current_player() {
-    return this.one_sided && (this.one_sided == this.state.current_player);
+    return !this.one_sided || (this.one_sided && (this.one_sided == this.state.current_player));
   }
 
 }
+
+
+
+
 
 
 
@@ -564,16 +580,16 @@ class ReviewState {
     this.combo_moves = combo_moves;
     let s = new State(n);
     s.set_from_combo_moves(py_slice(this.stack, 0, L + 1));
-    this.vs = new ViewState(s);
+    this.vs = new ViewState(s, true, true);
     this.button_click_handler = function() {};
   }
 
   _make_button(text, combo_track, color, current) {
     let button = document.createElement('button');
     button.classList.add('btn', 'btn-default', 'review-' + color);
-    if (!combo_track) {
-      button.style.boxShadow = "0 0 0 4px blue inset";
-    }
+    // if (!combo_track) {
+    //   button.style.boxShadow = "0 0 0 4px blue inset !important";
+    // }
     let span = document.createElement('span');
     span.classList.add('review-span');
     span.innerHTML = text;
@@ -591,8 +607,16 @@ class ReviewState {
 
     for (let i = 0; i < this.stack.length; i++) {
 
+      let broken = false;
+
       if (break_point === null && this.stack[i] != this.combo_moves[i]) {
         break_point = i;
+
+        let breaker = document.createElement('span');
+        breaker.innerHTML = '|| ';
+        breaker.style.margin = '3px';
+        div.appendChild(breaker);
+        broken = true;
       }
 
       let button = this._make_button(
@@ -607,9 +631,9 @@ class ReviewState {
       }
       div.appendChild(button);
 
-      if (i < this.stack.length - 1) {
-        div.appendChild(document.createTextNode(">"));
-      }
+      // if (i < this.stack.length - 1) {
+      //   div.appendChild(document.createTextNode(">"));
+      // }
 
     }
     if (break_point != null) {
@@ -634,6 +658,14 @@ class ReviewState {
     return div;
   }
 
+  is_off_combo_moves() {
+    for (let i = 0; i <= this.L; i++) {
+      if (this.stack[i] != this.combo_moves[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
 
 }
 
