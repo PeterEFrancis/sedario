@@ -799,25 +799,25 @@ function comp_find_losing_moves(state) {
 
 const COMP_STRATEGIES = {
 
-  comp_random_move: function(state) {
+  random_move: function(state) {
     return state.possible_moves[
       Math.floor(Math.random() * state.possible_moves.length)
     ];
   },
 
-  comp_first_move: function(state) {
+  first_move: function(state) {
     return Math.min(...state.possible_moves);
   },
 
-  comp_min_opp_mobility: function(state) {
+  min_opp_mobility: function(state) {
     return comp_find_winning_move(state) || min_child(state, mobility).move;
   },
 
-  comp_min_max_play_mobility: function(state) {
+  min_max_play_mobility: function(state) {
     return comp_find_winning_move(state) || min_max(state, mobility).move;
   },
 
-  comp_alpha_min_max: function(state) {
+  alpha_min_max: function(state) {
     return comp_find_winning_move(state) || min_max(state, alpha).move;
   }
 

@@ -105,7 +105,7 @@
                     type: 'POST',
                     cache: false,
                     success: function(recents) {
-                      if (recents.length == 0) {
+                      if (recents.length == 1) { // yourself
                         document.getElementById('no-recent-players').style.display = "block";
                         document.getElementById('recent-form').style.display = "none";
                       } else {
@@ -116,7 +116,7 @@
                           recents_dom.removeChild(recents_dom.lastChild);
                         }
                         for (let i = 0; i < recents.length; i++) {
-                          if (recents[i][0] != '{{ username }}') {
+                          if (recents[i][0] != '{{ s_user.username }}') {
                             let option = document.createElement('option');
                             option.value = recents[i][0];
                             option.innerHTML = recents[i][0] + " (" + recents[i][1] + " min ago)";
