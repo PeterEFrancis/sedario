@@ -643,7 +643,7 @@ class ReviewState {
       div.appendChild(breaker);
       for (let i = break_point; i < this.combo_moves.length; i++) {
         let button = this._make_button(
-          this.combo_moves[i - break_point],
+          this.combo_moves[i],
           true,
           i % 2 == 0 ? 'white' : 'black',
           false

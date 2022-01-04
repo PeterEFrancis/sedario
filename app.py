@@ -793,8 +793,8 @@ def game_access():
             socketio.emit('update review', room=f'game-{game.id}')
             return 'traverse successful', 200
         if method == 'retrack':
-            game.L = int(request.form['i']);
-            game.stack = str(eval(game.combo_moves)[:game.L + 1])
+            game.L = int(request.form['i'])
+            game.stack = game.combo_moves
             db.session.commit()
             socketio.emit('update review', room=f'game-{game.id}')
             return 'traverse successful', 200
