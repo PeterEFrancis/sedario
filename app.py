@@ -498,8 +498,16 @@ def review(gameid):
 @app.route('/AI')
 def AI_test():
     return render_template(
-        'AI_test.html',
+        'AI.html',
         account_bar = get_account_bar(),
+        footer = get_footer()
+    )
+
+
+@app.route('/music')
+def music():
+    return render_template(
+        'music.html',
         footer = get_footer()
     )
 
