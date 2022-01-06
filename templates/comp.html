@@ -26,11 +26,17 @@
         <div class="col-md-12">
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center" style="margin:10px;">
-                <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span>
-                - vs -
-                <span style="background-color: black; padding: 5px; border-radius: 5px;">{{ game.black }}</span>
-              </h3>
+              <div class="row">
+                <div class="col-sm-5 text-center">
+                  <span class="name-tag-white">{{ game.white }}</span>
+                </div>
+                <div class="col-sm-2 text-center">
+                  <span class="vs">- vs -</span>
+                </div>
+                <div class="col-sm-5 text-center">
+                  <span class="name-tag-black">{{ game.black }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
