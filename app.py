@@ -489,7 +489,8 @@ def review(gameid):
         account_bar = get_account_bar(),
         footer = get_footer(),
         game = game,
-        comp_opponent = comp_opponent
+        comp_opponent = comp_opponent,
+        this_player = 'white' if game.white == s_user.username else 'black'
     )
 
 

@@ -574,29 +574,27 @@ class ViewState {
 
 class ReviewState {
 
-  constructor(n, L, stack, combo_moves) {
+  constructor(n, L, stack, combo_moves, this_player) {
     this.L = L;
     this.stack = stack;
     this.combo_moves = combo_moves;
     let s = new State(n);
     s.set_from_combo_moves(py_slice(this.stack, 0, L + 1));
-    this.vs = new ViewState(s, true, true);
+    this.vs = new ViewState(s, this_player, true);
     this.button_click_handler = function() {};
   }
 
   _make_button(text, combo_track, color, current) {
     let button = document.createElement('button');
     button.classList.add('btn', 'btn-default', 'review-' + color);
-    // if (!combo_track) {
-    //   button.style.boxShadow = "0 0 0 4px blue inset !important";
-    // }
     let span = document.createElement('span');
     span.classList.add('review-span');
     span.innerHTML = text;
     button.style.padding = "0px";
     button.appendChild(span);
     if (current) {
-      span.style.boxShadow = "0px 0px 5px 2px yellow";    }
+      span.classList.add('highlight-btn');
+    }
     return button;
   }
 
@@ -613,7 +611,7 @@ class ReviewState {
         break_point = i;
 
         let breaker = document.createElement('span');
-        breaker.innerHTML = '|| ';
+        breaker.innerHTML = '> ';
         breaker.style.margin = '3px';
         div.appendChild(breaker);
         broken = true;
@@ -630,10 +628,6 @@ class ReviewState {
         t.button_click_handler(_i, 'traverse');
       }
       div.appendChild(button);
-
-      // if (i < this.stack.length - 1) {
-      //   div.appendChild(document.createTextNode(">"));
-      // }
 
     }
     if (break_point != null) {

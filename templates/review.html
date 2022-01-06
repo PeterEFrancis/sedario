@@ -25,12 +25,18 @@
         <div class="col-md-12">
           <div class="panel dark">
             <div class="panel-heading">
-              <h3 class="text-center">
-                <span style="background-color: white; padding: 5px; border-radius: 5px; color: var(--dark)">{{ game.white }}</span>
-                - vs -
-                <span style="background-color: black; padding: 5px; border-radius: 5px;">{{ game.black }}</span>
-              </h3>
-            </div>
+              <div class="row">
+                <div class="col-sm-5 text-center">
+                  <span class="name-tag-white">{{ game.white }}</span>
+                </div>
+                <div class="col-sm-2 text-center">
+                  <span class="vs">- vs -</span>
+                </div>
+                <div class="col-sm-5 text-center">
+                  <span class="name-tag-black">{{ game.black }}</span>
+                </div>
+              </div>
+          </div>
           </div>
         </div>
       </div>
@@ -62,7 +68,7 @@
     var rs;
 
     function set_screen(L, stack, combo_moves) {
-      rs = new ReviewState(8, L, stack, combo_moves);
+      rs = new ReviewState(8, L, stack, combo_moves, {% if this_player == 'white' %}WHITE{% else %}BLACK{% endif %});
       let canvas_cont = document.getElementById('canvas-container');
       canvas_cont.innerHTML =  "";
       canvas_cont.appendChild(rs.vs.get_DOM());
@@ -72,7 +78,7 @@
       // draw next square
       let next_square = L + 1 == stack.length ? null : stack[L + 1];
       let next_color = 'blue';
-      if ("{{ game.type == 'c' }}" === 'True' && rs.is_off_combo_moves() && '{{ comp_opponent }}' != "" && rs.vs.is_current_player()) {
+      if ("{{ game.type == 'c' }}" === 'True' && rs.is_off_combo_moves() && '{{ comp_opponent }}' != "" && !rs.vs.is_current_player()) {
         next_square = COMP_STRATEGIES['{{ comp_opponent }}'](rs.vs.state);
         next_color = 'orange';
       }
