@@ -867,31 +867,31 @@ def get_session_user():
 #  \__,_|\__,_|_| |_| |_|_|_| |_|
 
 
-@app.route('/initialize')
+# @app.route('/initialize')
 def initialize():
     db.drop_all()
     db.create_all()
-    users = [
-        ['aaa1','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
-        ['aaa2','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
-        ['aaa3','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
-        ['aaa4','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
-    ]
-    for username, salt, hash in users:
-        u = User(username,'pass')
-        u.salt = salt
-        u.hashed_password = hash
-        u.public = True
-        db.session.add(u)
-        db.session.commit()
-
-    get_user('aaa1')[1].add_friend('aaa2')
-    get_user('aaa2')[1].add_friend('aaa1')
-
-    db.session.add(SysData())
-    db.session.commit()
-
-    set_user_ranks()
+    # users = [
+    #     ['aaa1','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
+    #     ['aaa2','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
+    #     ['aaa3','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
+    #     ['aaa4','7he9J08ghw9hr','f998a13487d4f1b7f273e80716fcebc02f1d69fd'],
+    # ]
+    # for username, salt, hash in users:
+    #     u = User(username,'pass')
+    #     u.salt = salt
+    #     u.hashed_password = hash
+    #     u.public = True
+    #     db.session.add(u)
+    #     db.session.commit()
+    #
+    # get_user('aaa1')[1].add_friend('aaa2')
+    # get_user('aaa2')[1].add_friend('aaa1')
+    #
+    # db.session.add(SysData())
+    # db.session.commit()
+    #
+    # set_user_ranks()
 
     return 'Initialization is done.'
 
