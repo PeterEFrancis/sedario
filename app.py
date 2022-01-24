@@ -109,7 +109,7 @@ class User(db.Model):
     def __init__(self, username, password):
         self.username = username
         self.set_password(password)
-        self.public = False
+        self.public = True
         self.last_seen =str(time.time())
         self.elo = 1000
         self.rank = 0
