@@ -379,12 +379,15 @@ def index():
 
 @app.route('/all')
 def all():
-    return render_template(
-        'all.html',
-        games = db.session.query(Game),
-        users = db.session.query(User),
-        SysData = get_SysData()
-    )
+    logged_in, s_user = get_session_user()
+    if logged_in and s_user == 'peter':
+        return render_template(
+            'all.html',
+            games = db.session.query(Game),
+            users = db.session.query(User),
+            SysData = get_SysData()
+        )
+    return error_page(403)
 
 
 @app.route('/user/<string:username>')
