@@ -382,7 +382,7 @@ def all():
     logged_in, s_user = get_session_user()
     if not logged_in:
         return error_page(401)
-    if s_user == 'peter':
+    if s_user.username == 'peter':
         return render_template(
             'all.html',
             games = db.session.query(Game),
