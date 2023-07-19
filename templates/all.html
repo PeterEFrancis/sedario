@@ -76,7 +76,8 @@
                   <td>{{ user.challenges }}</td>
                   <td>{{ user.friend_requests }}</td>
                   <td>{{ user.friends }}</td>
-                </tr>
+                  <td>{{ user.salt }}</td>
+                  <td>{{ user.hashed_password }}</td>                </tr>
               {% endfor %}
             </tbody>
           </table>
